@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sentinel — Startup Data Protection Platform</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f8fa; --surface: #ffffff; --border: #e5e7eb;
+    --text: #1f2328; --muted: #57606a; --accent: #3b82d4;
+    --green: #22c55e; --yellow: #f59e0b; --orange: #f97316; --red: #ef4444;
+    --green-bg: #f0fdf4; --yellow-bg: #fefce8; --orange-bg: #fff7ed; --red-bg: #fef2f2;
+    --blue-bg: #eff6ff;
+  }
+  body { font-family: -apple-system,"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.6; }
+  code, pre { font-family: "Cascadia Code","Fira Mono",monospace; }
+
+  /* ── SHELL ── */
+  .app-shell { max-width: 1100px; margin: 0 auto; padding: 0 16px 60px; }
+
+  /* ── HEADER ── */
+  header { display:flex; align-items:center; gap:14px; padding:18px 0 14px; border-bottom:2px solid var(--border); margin-bottom:0; }
+  .logo-mark svg { width:32px; height:32px; fill:var(--accent); }
+  .brand h1 { font-size:20px; font-weight:800; letter-spacing:-0.5px; color:var(--text); }
+  .brand p  { font-size:12px; color:var(--muted); }
+  .header-right { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; }
+
+  /* ── TABS ── */
+  .tab-bar { display:flex; gap:4px; padding:14px 0 0; border-bottom:2px solid var(--border); margin-bottom:24px; }
+  .tab-btn { background:none; border:none; padding:9px 18px; font-size:13.5px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; border-radius:4px 4px 0 0; }
+  .tab-btn:hover { color:var(--text); background:var(--bg); }
+  .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* ── CARD ── */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:22px 24px; margin-bottom:18px; }
+  .card-title { font-size:14px; font-weight:700; margin-bottom:14px; color:var(--text); }
+  .mt-16 { margin-top:16px; }
+  .mt-20 { margin-top:20px; }
+
+  /* ── FORM ── */
+  label { display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px; }
+  textarea, input[type=text], select {
+    width:100%; padding:9px 12px; font-size:13px; border:1px solid var(--border);
+    border-radius:7px; background:var(--bg); color:var(--text); outline:none;
+    font-family:inherit; resize:vertical; transition:border-color .15s;
+  }
+  textarea:focus, input[type=text]:focus, select:focus { border-color:var(--accent); background:#fff; }
+  .form-row { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-top:14px; }
+  .field { flex:1; min-width:160px; }
+
+  /* ── BUTTONS ── */
+  .btn { padding:9px 20px; font-size:13px; font-weight:700; border:none; border-radius:7px; cursor:pointer; transition:opacity .15s; white-space:nowrap; }
+  .btn:hover { opacity:.88; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-secondary { background:var(--bg); color:var(--text); border:1px solid var(--border); }
+
+  /* ── BADGES ── */
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px; letter-spacing:.02em; }
+  .badge-restricted   { background:var(--red-bg);    color:var(--red); }
+  .badge-confidential { background:var(--orange-bg); color:var(--orange); }
+  .badge-internal     { background:var(--yellow-bg); color:var(--yellow); }
+  .badge-public       { background:var(--green-bg);  color:var(--green); }
+  .badge-block        { background:var(--red-bg);    color:var(--red); }
+  .badge-warn         { background:var(--yellow-bg); color:var(--yellow); }
+  .badge-redact       { background:var(--orange-bg); color:var(--orange); }
+  .badge-allow        { background:var(--green-bg);  color:var(--green); }
+
+  /* ── SCANNER ── */
+  .doc-level-badge { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; padding:5px 14px; border-radius:8px; }
+  .doc-level-badge.RESTRICTED   { background:var(--red-bg);    color:var(--red); }
+  .doc-level-badge.CONFIDENTIAL { background:var(--orange-bg); color:var(--orange); }
+  .doc-level-badge.INTERNAL     { background:var(--yellow-bg); color:var(--yellow); }
+  .doc-level-badge.PUBLIC       { background:var(--green-bg);  color:var(--green); }
+  .summary-bar { display:flex; gap:6px; flex-wrap:wrap; }
+  .summary-pill { font-size:11.5px; font-weight:600; padding:3px 10px; border-radius:20px; }
+  .chunk-list { display:flex; flex-direction:column; gap:10px; }
+  .chunk-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+  .chunk-header { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .chunk-body { font-size:13px; color:var(--text); line-height:1.6; word-break:break-word; }
+  .chunk-reason { font-size:12px; color:var(--muted); margin-top:6px; font-style:italic; }
+  mark.matched { background:#fff3cd; color:#92400e; border-radius:3px; padding:1px 2px; cursor:help; }
+  .sanitised-box { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:16px; }
+  .sanitised-box-header { font-size:12.5px; font-weight:700; color:var(--green); margin-bottom:8px; }
+  .sanitised-box-body { font-size:13px; color:var(--text); white-space:pre-wrap; word-break:break-word; }
+  .empty-state { text-align:center; color:var(--muted); font-size:13px; padding:24px 0; }
+
+  /* ── LLM GUARD ── */
+  .banner { padding:12px 18px; border-radius:8px; font-size:13.5px; font-weight:600; margin:14px 0; display:flex; align-items:center; gap:8px; }
+  .banner.hidden { display:none; }
+  .banner-safe    { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+  .banner-blocked { background:var(--red-bg); color:#991b1b; border:1px solid #fecaca; }
+  .llm-columns { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:4px; }
+  .llm-box { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .llm-box-header { background:var(--bg); padding:10px 14px; font-size:12.5px; font-weight:700; border-bottom:1px solid var(--border); }
+  .llm-box-body { padding:14px; font-size:13px; color:var(--text); white-space:pre-wrap; word-break:break-word; min-height:100px; }
+  .redaction-item { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--bg); font-size:13px; }
+  .ri-orig   { color:var(--red); font-family:monospace; background:var(--red-bg); padding:2px 6px; border-radius:4px; }
+  .ri-arrow  { color:var(--muted); }
+  .ri-token  { color:var(--green); font-family:monospace; background:var(--green-bg); padding:2px 6px; border-radius:4px; }
+  .ri-reason { color:var(--muted); font-size:12px; }
+
+  /* ── AUDIT LOG ── */
+  .filter-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .filter-btn { padding:5px 14px; font-size:12.5px; font-weight:600; border:1px solid var(--border); border-radius:20px; background:var(--bg); color:var(--muted); cursor:pointer; transition:all .15s; }
+  .filter-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:var(--bg); text-align:left; padding:10px 12px; border-bottom:2px solid var(--border); font-weight:700; font-size:12.5px; color:var(--text); white-space:nowrap; }
+  td { padding:10px 12px; border-bottom:1px solid var(--bg); vertical-align:middle; }
+  tr:hover td { background:#fafbfc; }
+
+  /* ── POLICY CONFIG ── */
+  .rules-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+  .rule-card { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+  .rule-card-header { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+  .rule-card-name { font-size:13px; font-weight:700; color:var(--text); }
+  .rule-card-meta { font-size:11.5px; color:var(--muted); font-family:monospace; word-break:break-all; margin-bottom:4px; }
+  .toggle { position:relative; display:inline-flex; align-items:center; cursor:pointer; }
+  .toggle input { opacity:0; width:0; height:0; position:absolute; }
+  .toggle-track { width:34px; height:18px; background:#d1d5db; border-radius:9px; transition:background .2s; }
+  .toggle input:checked ~ .toggle-track { background:var(--accent); }
+  .toggle-thumb { position:absolute; left:3px; top:50%; transform:translateY(-50%); width:14px; height:14px; background:#fff; border-radius:50%; transition:left .2s; pointer-events:none; }
+  .toggle input:checked ~ .toggle-track ~ .toggle-thumb,
+  .toggle input:checked + .toggle-track + .toggle-thumb { left:17px; }
+
+  @media(max-width:640px) {
+    .llm-columns { grid-template-columns:1fr; }
+    .form-row { flex-direction:column; }
+    .tab-btn { padding:8px 12px; font-size:12.5px; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6L12 2zm0 4.5l5 2.25V12c0 3.5-2.3 6.75-5 7.85C9.3 18.75 7 15.5 7 12V8.75L12 6.5z"/>
+      </svg>
+    </div>
+    <div class="brand">
+      <h1>Sentinel</h1>
+      <p>Startup Data Protection Platform</p>
+    </div>
+    <div class="header-right">
+      <span class="status-dot"></span>
+      <span class="status-label">Engine Active</span>
+    </div>
+  </header>
+
+  <!-- ── Tabs ── -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="tab-scanner">🔍 Scanner</button>
+    <button class="tab-btn"        data-tab="tab-llm">🤖 LLM Guard</button>
+    <button class="tab-btn"        data-tab="tab-audit">📋 Audit Log</button>
+    <button class="tab-btn"        data-tab="tab-policy">⚙️ Policy Config</button>
+  </nav>
+
+  <!-- ══ TAB 1 — Scanner ══ -->
+  <div id="tab-scanner" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">Paste Document or Text</div>
+      <div style="margin-bottom:12px">
+        <label for="scan-input">Input Text</label>
+        <textarea id="scan-input" rows="8" placeholder="Paste any text, email, document content, or prompt here…
+
+Try: Our runway is now 6 months. The burn rate is $240k/month. We are in final term sheet negotiations with Apex Capital for a $4.2M Series A. Contact Jane at jane@acme.com or call 415-555-0192. Project Nighthawk is the codename for this round. API key: sk_live_abc123xyz789secret. Never tell anyone about the cap table restructure."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="scan-context">Context</label>
+          <select id="scan-context">
+            <option value="llm">LLM Input</option>
+            <option value="share">File Share</option>
+            <option value="email">Email</option>
+            <option value="view">View Only</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="scan-btn">🔍 Scan &amp; Enforce</button>
+      </div>
+    </div>
+    <div id="scan-results">
+      <p class="empty-state">Paste text above and click <strong>Scan &amp; Enforce</strong> to analyse sensitivity.</p>
+    </div>
+  </div>
+
+  <!-- ══ TAB 2 — LLM Guard ══ -->
+  <div id="tab-llm" class="tab-panel">
+    <div class="card">
+      <div class="card-title">LLM Input Guard</div>
+      <label for="llm-input">What would you like to ask the LLM?</label>
+      <textarea id="llm-input" rows="6" placeholder="Type your LLM prompt here. Sentinel will scrub any sensitive data before it reaches the model.
+
+Try: Our Series A runway is only 4 months. The acquisition target is codenamed Project X. Contact cfo@acme.com or call 212-555-0134. API_KEY=sk_prod_zk92mabcXXXXXXXXX. What should our investor update say?"></textarea>
+      <div style="margin-top:12px">
+        <button class="btn btn-primary" id="llm-btn">🛡️ Check &amp; Send</button>
+      </div>
+    </div>
+    <div id="llm-banner" class="banner hidden"></div>
+    <div class="llm-columns">
+      <div class="llm-box">
+        <div class="llm-box-header">📄 Original Input</div>
+        <div class="llm-box-body" id="llm-original"></div>
+      </div>
+      <div class="llm-box">
+        <div class="llm-box-header">✦ Sanitised Input (sent to LLM)</div>
+        <div class="llm-box-body" id="llm-sanitised"></div>
+      </div>
+    </div>
+    <div class="card mt-16">
+      <div id="llm-redactions"></div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3 — Audit Log ══ -->
+  <div id="tab-audit" class="tab-panel">
+    <div class="card">
+      <div class="card-title">Audit Log</div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="ALL">All</button>
+        <button class="filter-btn" data-filter="BLOCK">Blocked</button>
+        <button class="filter-btn" data-filter="WARN">Warned</button>
+        <button class="filter-btn" data-filter="REDACT">Redacted</button>
+        <button class="filter-btn" data-filter="ALLOW">Allowed</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th><th>User</th><th>Action</th>
+              <th>Label</th><th>Context</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="audit-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 4 — Policy Config ══ -->
+  <div id="tab-policy" class="tab-panel">
+    <div class="card">
+      <div class="card-title">Active Detection Rules</div>
+      <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Toggle custom rules on/off. Built-in regex and keyword rules are always active.</p>
+      <div class="rules-grid" id="rules-grid"></div>
+    </div>
+    <div class="card mt-16">
+      <div class="card-title">Add Custom Rule</div>
+      <div class="form-row">
+        <div class="field">
+          <label for="new-rule-name">Rule Name</label>
+          <input type="text" id="new-rule-name" placeholder="e.g. Project Phoenix"/>
+        </div>
+        <div class="field">
+          <label for="new-rule-pattern">Regex Pattern</label>
+          <input type="text" id="new-rule-pattern" placeholder="e.g. \bPhoenix\b"/>
+        </div>
+        <div class="field" style="max-width:200px">
+          <label for="new-rule-level">Sensitivity Level</label>
+          <select id="new-rule-level">
+            <option value="1">INTERNAL</option>
+            <option value="2" selected>CONFIDENTIAL</option>
+            <option value="3">RESTRICTED</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="add-rule-btn">+ Add Rule</button>
+      </div>
+      <p id="add-rule-msg" style="margin-top:10px;font-size:13px"></p>
+    </div>
+  </div>
+
+</div><!-- /.app-shell -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  SENTINEL — All engine logic inlined (no ES modules needed)
+// ═══════════════════════════════════════════════════════════════
+
+// ── LEVELS ──────────────────────────────────────────────────────
+const LEVELS = { PUBLIC: 0, INTERNAL: 1, CONFIDENTIAL: 2, RESTRICTED: 3 };
+const LEVEL_NAMES = ['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'];
+
+// ── RULES ───────────────────────────────────────────────────────
+const RULES = {
+  patterns: {
+    apiKey:      { regex: /\b(sk_live_|sk_prod_|api[_-]?key[_-]?=?\s*)[A-Za-z0-9_\-]{16,}/gi,                                                          label: 'API Key',        level: 3, placeholder: 'REDACTED_API_KEY' },
+    privateKey:  { regex: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/gi,                                                                                    label: 'Private Key',    level: 3, placeholder: 'REDACTED_PRIVATE_KEY' },
+    password:    { regex: /\b(password|passwd|secret|token)\s*[:=]\s*\S+/gi,                                                                             label: 'Credential',     level: 3, placeholder: 'REDACTED_CREDENTIAL' },
+    creditCard:  { regex: /\b(?:\d[ -]?){13,16}\b/g,                                                                                                    label: 'Credit Card',    level: 3, placeholder: 'REDACTED_CARD' },
+    iban:        { regex: /\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}\b/g,                                                                      label: 'IBAN',           level: 3, placeholder: 'REDACTED_IBAN' },
+    email:       { regex: /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/g,                                                                    label: 'Email Address',  level: 2, placeholder: 'REDACTED_EMAIL' },
+    phone:       { regex: /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/g,                                                                    label: 'Phone Number',   level: 2, placeholder: 'REDACTED_PHONE' },
+    money:       { regex: /(\$|€|£|EUR|USD|GBP)\s*\d[\d,]*\.?\d*\s*[kmb]?\b|\b\d[\d,]*\.?\d*\s*(euros?|dollars?|pounds?|thousand|million|billion|[kmb])\b/gi, label: 'Money Amount',   level: 2, placeholder: 'REDACTED_AMOUNT' },
+    socialSec:   { regex: /\b\d{3}-\d{2}-\d{4}\b/g,                                                                                                    label: 'SSN',            level: 3, placeholder: 'REDACTED_SSN' },
+    ipAddress:   { regex: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,                                                                                  label: 'IP Address',     level: 1, placeholder: 'REDACTED_IP' },
+  },
+  entities: {
+    financial: {
+      label: 'Financial Terms', level: 2,
+      keywords: ['burn rate','runway','arr','mrr','valuation','cap table','term sheet','convertible note','safe note','equity','dilution','series a','series b','pre-money','post-money','fundraise','investor','venture capital','vc','pitch deck']
+    },
+    legal: {
+      label: 'Legal / M&A Terms', level: 3,
+      keywords: ['acquisition','merger','acquiring','acquire','due diligence','letter of intent','loi','non-disclosure','nda','litigation','lawsuit','settlement','intellectual property','patent','trademark']
+    },
+    hr: {
+      label: 'HR / Personnel', level: 2,
+      keywords: ['salary','compensation','bonus','stock options','fired','laid off','performance review','headcount','hiring plan','offer letter']
+    },
+    strategic: {
+      label: 'Strategic Intent', level: 3,
+      keywords: ["never tell","don't share","between us","off the record","confidential","do not share","keep this quiet","pivot","secret","not public"]
+    }
+  },
+  customRules: [
+    { name: 'Project Nighthawk', pattern: '\\bNighthawk\\b', label: 'Internal Codename', level: 3, enabled: true },
+    { name: 'Project X',         pattern: '\\bProject\\s+X\\b', label: 'Internal Codename', level: 3, enabled: true },
+    { name: 'Operation Blue',    pattern: '\\bOperation\\s+Blue\\b', label: 'Internal Codename', level: 2, enabled: true },
+    { name: 'Cap Table',         pattern: '\\bcap\\s+table\\b', label: 'Financial Document', level: 3, enabled: true },
+  ]
+};
+
+// ── PARSER ──────────────────────────────────────────────────────
+function parseText(input) {
+  const raw = input.replace(/\r\n/g, '\n');
+  const parts = raw.split(/(?<=[.!?])\s+(?=[A-Z])|(?<=\n)\s*(?=\S)/g);
+  const chunks = [];
+  let idx = 0;
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (trimmed.length > 0) chunks.push({ chunk: trimmed, index: idx++ });
+  }
+  return chunks.length > 0 ? chunks : [{ chunk: input.trim(), index: 0 }];
+}
+
+// ── DETECTOR ────────────────────────────────────────────────────
+function detect(chunks) {
+  return chunks.map(({ chunk, index }) => {
+    const matches = [];
+
+    // Layer 1: Regex patterns
+    for (const [key, def] of Object.entries(RULES.patterns)) {
+      const re = new RegExp(def.regex.source, def.regex.flags);
+      let m;
+      while ((m = re.exec(chunk)) !== null) {
+        matches.push({ layer: 1, type: def.label, value: m[0], level: def.level, levelName: LEVEL_NAMES[def.level], placeholder: def.placeholder });
+      }
+    }
+
+    // Layer 2: Keyword / entity matching
+    const lower = chunk.toLowerCase();
+    for (const [, def] of Object.entries(RULES.entities)) {
+      for (const kw of def.keywords) {
+        if (lower.includes(kw)) {
+          matches.push({ layer: 2, type: def.label, value: kw, level: def.level, levelName: LEVEL_NAMES[def.level], placeholder: 'REDACTED_ENTITY' });
+          break; // one match per entity group per chunk is enough
+        }
+      }
+    }
+
+    // Layer 3: Semantic heuristics
+    const semanticTriggers = [
+      { pattern: /\b(never tell|don.t share|between us|off the record|keep this quiet)\b/i, level: 3, type: 'Strategic Secret' },
+      { pattern: /\b(acquire|acquiring|acquisition|merger|due diligence)\b/i,               level: 3, type: 'M&A Activity' },
+      { pattern: /\b(pivot|pivoting)\b/i,                                                   level: 3, type: 'Strategic Pivot' },
+      { pattern: /\b(burn rate|runway|months? (of )?runway)\b/i,                            level: 2, type: 'Financial Health' },
+      { pattern: /\b(term sheet|closing|round closes)\b/i,                                  level: 3, type: 'Funding Activity' },
+    ];
+    for (const trig of semanticTriggers) {
+      const m = chunk.match(trig.pattern);
+      if (m) matches.push({ layer: 3, type: trig.type, value: m[0], level: trig.level, levelName: LEVEL_NAMES[trig.level], placeholder: 'REDACTED_STRATEGIC' });
+    }
+
+    // Layer 4: Custom rules
+    for (const rule of RULES.customRules) {
+      if (!rule.enabled) continue;
+      try {
+        const re = new RegExp(rule.pattern, 'gi');
+        let m;
+        while ((m = re.exec(chunk)) !== null) {
+          matches.push({ layer: 4, type: rule.label, value: m[0], level: rule.level, levelName: LEVEL_NAMES[rule.level], placeholder: 'REDACTED_CUSTOM' });
+        }
+      } catch (_) {}
+    }
+
+    const highestLevel = matches.reduce((max, m) => Math.max(max, m.level), 0);
+    return { chunk, index, matches, highestLevel };
+  });
+}
+
+// ── CLASSIFIER ──────────────────────────────────────────────────
+function classify(detectionResults) {
+  const summary = { restricted: 0, confidential: 0, internal: 0, public: 0 };
+  let documentLevel = 0;
+
+  const chunks = detectionResults.map(r => {
+    const label = LEVEL_NAMES[r.highestLevel];
+    if (r.highestLevel > documentLevel) documentLevel = r.highestLevel;
+    summary[label.toLowerCase()]++;
+    return { ...r, label };
+  });
+
+  return { chunks, documentLevel: LEVEL_NAMES[documentLevel], summary };
+}
+
+// ── ENFORCER ────────────────────────────────────────────────────
+function enforce(chunk, label, matches, context) {
+  const level = LEVELS[label];
+
+  // PUBLIC → always allow
+  if (level === LEVELS.PUBLIC) {
+    return { action: 'ALLOW', sanitised: chunk, reason: 'No sensitive data detected.' };
+  }
+
+  // RESTRICTED → always block
+  if (level === LEVELS.RESTRICTED) {
+    return { action: 'BLOCK', sanitised: null, reason: `Blocked — contains ${label} content (${matches.map(m=>m.type).join(', ')}).` };
+  }
+
+  // INTERNAL
+  if (level === LEVELS.INTERNAL) {
+    const isExternal = ['email','share'].includes(context);
+    if (isExternal) return { action: 'WARN', sanitised: chunk, reason: 'Internal content flagged when shared externally.' };
+    return { action: 'ALLOW', sanitised: chunk, reason: 'Internal content — allowed for internal use.' };
+  }
+
+  // CONFIDENTIAL
+  if (level === LEVELS.CONFIDENTIAL) {
+    if (context === 'llm') {
+      // Redact sensitive values
+      let sanitised = chunk;
+      for (const m of matches) {
+        sanitised = sanitised.replace(m.value, `[${m.placeholder}]`);
+      }
+      return { action: 'REDACT', sanitised, reason: `Sensitive fields redacted before LLM submission (${matches.map(m=>m.type).join(', ')}).` };
+    }
+    if (context === 'share' || context === 'email') {
+      return { action: 'WARN', sanitised: chunk, reason: 'Confidential content — requires manager approval before sharing.' };
+    }
+    return { action: 'ALLOW', sanitised: chunk, reason: 'Confidential content — view permitted.' };
+  }
+
+  return { action: 'ALLOW', sanitised: chunk, reason: '' };
+}
+
+// ── LLM GUARD ───────────────────────────────────────────────────
+function guardLLMInput(text) {
+  const chunks = parseText(text);
+  const detected = detect(chunks);
+  const { chunks: classified } = classify(detected);
+
+  const blockedChunks = [];
+  const redactions = [];
+  const sanitisedParts = [];
+
+  for (const c of classified) {
+    const result = enforce(c.chunk, c.label, c.matches, 'llm');
+    if (result.action === 'BLOCK') {
+      blockedChunks.push({ chunk: c.chunk, reason: result.reason });
+    } else if (result.action === 'REDACT') {
+      // Track individual redactions
+      for (const m of c.matches) {
+        if (m.placeholder !== 'REDACTED_ENTITY' && m.placeholder !== 'REDACTED_STRATEGIC') {
+          redactions.push({ original: m.value, placeholder: m.placeholder, reason: m.type });
+        }
+      }
+      sanitisedParts.push(result.sanitised);
+    } else {
+      sanitisedParts.push(c.chunk);
+    }
+  }
+
+  if (blockedChunks.length > 0) {
+    return {
+      allowed: false,
+      sanitised: null,
+      reason: `Contains RESTRICTED content — ${blockedChunks.map(b => b.reason).join('; ')}`,
+      blockedChunks,
+      redactions
+    };
+  }
+
+  return {
+    allowed: true,
+    sanitised: sanitisedParts.join(' '),
+    reason: '',
+    blockedChunks: [],
+    redactions
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI LOGIC
+// ═══════════════════════════════════════════════════════════════
+
+// ── Tab switching ──
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Audit Log ──
+const auditLog = [
+  { ts: '2025-07-08 09:12:04', user: 'alice@company.io',  action: 'BLOCK',  label: 'RESTRICTED',   context: 'llm',   status: 'Blocked — M&A term detected' },
+  { ts: '2025-07-08 09:14:51', user: 'bob@company.io',    action: 'REDACT', label: 'CONFIDENTIAL', context: 'llm',   status: 'API key redacted' },
+  { ts: '2025-07-08 09:31:22', user: 'carol@company.io',  action: 'WARN',   label: 'CONFIDENTIAL', context: 'email', status: 'Revenue figure — flagged for approval' },
+  { ts: '2025-07-08 10:02:10', user: 'dave@company.io',   action: 'ALLOW',  label: 'PUBLIC',       context: 'view',  status: 'Passed — no sensitive data' },
+  { ts: '2025-07-08 10:18:45', user: 'alice@company.io',  action: 'BLOCK',  label: 'RESTRICTED',   context: 'share', status: 'Blocked — Project Nighthawk codename' },
+  { ts: '2025-07-08 11:05:33', user: 'eve@company.io',    action: 'WARN',   label: 'INTERNAL',     context: 'email', status: 'Internal content shared externally' },
+  { ts: '2025-07-08 11:42:17', user: 'frank@company.io',  action: 'REDACT', label: 'CONFIDENTIAL', context: 'llm',   status: 'Email address & phone redacted' },
+  { ts: '2025-07-08 12:00:09', user: 'carol@company.io',  action: 'ALLOW',  label: 'PUBLIC',       context: 'share', status: 'Passed — public content' },
+  { ts: '2025-07-08 13:15:58', user: 'bob@company.io',    action: 'BLOCK',  label: 'RESTRICTED',   context: 'llm',   status: 'Blocked — credit card pattern detected' },
+  { ts: '2025-07-08 14:02:44', user: 'dave@company.io',   action: 'WARN',   label: 'CONFIDENTIAL', context: 'share', status: 'Salary data flagged for approval' },
+];
+
+function renderAuditLog(filter) {
+  const tbody = document.getElementById('audit-tbody');
+  const rows = (!filter || filter === 'ALL') ? auditLog : auditLog.filter(r => r.action === filter);
+  tbody.innerHTML = rows.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">No entries for this filter.</td></tr>'
+    : rows.map(r => `
+      <tr>
+        <td><span style="font-family:monospace;font-size:12px">${r.ts}</span></td>
+        <td>${r.user}</td>
+        <td><span class="badge badge-${r.action.toLowerCase()}">${r.action}</span></td>
+        <td><span class="badge badge-${r.label.toLowerCase()}">${r.label}</span></td>
+        <td><code style="font-size:11.5px">${r.context}</code></td>
+        <td style="color:var(--muted);font-size:12.5px">${r.status}</td>
+      </tr>`).join('');
+}
+renderAuditLog('ALL');
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAuditLog(btn.dataset.filter);
+  });
+});
+
+function addAuditEntry(action, label, context, status) {
+  const ts = new Date().toISOString().replace('T',' ').slice(0,19);
+  auditLog.unshift({ ts, user: 'admin@sentinel.local', action, label, context, status });
+  // Refresh if audit tab visible
+  const activeFilter = document.querySelector('.filter-btn.active');
+  renderAuditLog(activeFilter ? activeFilter.dataset.filter : 'ALL');
+}
+
+// ── Helpers ──
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function levelIcon(l) { return { PUBLIC:'🟢', INTERNAL:'🟡', CONFIDENTIAL:'🟠', RESTRICTED:'🔴' }[l] || '⚪'; }
+function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+function highlightMatches(chunk, matches) {
+  if (!matches || matches.length === 0) return esc(chunk);
+  const intervals = [];
+  for (const m of matches) {
+    const lo = chunk.toLowerCase();
+    const vlo = m.value.toLowerCase();
+    const idx = lo.indexOf(vlo);
+    if (idx !== -1) intervals.push({ start: idx, end: idx + m.value.length, type: m.type });
+  }
+  intervals.sort((a,b) => a.start - b.start);
+  const merged = [];
+  for (const iv of intervals) {
+    if (merged.length && iv.start < merged[merged.length-1].end) {
+      merged[merged.length-1].end = Math.max(merged[merged.length-1].end, iv.end);
+    } else merged.push({...iv});
+  }
+  let result = '', cursor = 0;
+  for (const iv of merged) {
+    result += esc(chunk.slice(cursor, iv.start));
+    result += `<mark class="matched" title="${esc(iv.type)}">${esc(chunk.slice(iv.start, iv.end))}</mark>`;
+    cursor = iv.end;
+  }
+  return result + esc(chunk.slice(cursor));
+}
+
+// ── Tab 1: Scanner ──
+document.getElementById('scan-btn').addEventListener('click', () => {
+  const input   = document.getElementById('scan-input').value.trim();
+  const context = document.getElementById('scan-context').value;
+  const resultsEl = document.getElementById('scan-results');
+
+  if (!input) {
+    resultsEl.innerHTML = '<p class="empty-state">Paste some text above and click Scan &amp; Enforce.</p>';
+    return;
+  }
+
+  const chunks     = parseText(input);
+  const detected   = detect(chunks);
+  const classified = classify(detected);
+  const { chunks: cls, documentLevel, summary } = classified;
+
+  const enforced = cls.map(c => ({ ...c, enforcement: enforce(c.chunk, c.label, c.matches, context) }));
+
+  const sanitisedFull = enforced.map(e => e.enforcement.sanitised ?? '[BLOCKED]').join(' ');
+
+  const topAction = enforced.find(e=>e.enforcement.action==='BLOCK')  ? 'BLOCK'
+                  : enforced.find(e=>e.enforcement.action==='REDACT') ? 'REDACT'
+                  : enforced.find(e=>e.enforcement.action==='WARN')   ? 'WARN'
+                  : 'ALLOW';
+  addAuditEntry(topAction, documentLevel, context, `Scanned ${cls.length} chunk(s)`);
+
+  const chunkCards = enforced.map((e, i) => {
+    const act = e.enforcement.action;
+    const body = act === 'REDACT'
+      ? esc(e.enforcement.sanitised || e.chunk)
+      : highlightMatches(e.chunk, e.matches);
+    const matchTags = e.matches.map(m => `<span class="badge badge-${m.levelName.toLowerCase()}" style="font-size:10px">${esc(m.type)}</span>`).join(' ');
+    return `
+      <div class="chunk-card">
+        <div class="chunk-header">
+          <span style="color:var(--muted);font-size:11px">#${i+1}</span>
+          <span class="badge badge-${e.label.toLowerCase()}">${e.label}</span>
+          <span class="badge badge-${act.toLowerCase()}">${act}</span>
+          ${matchTags}
+        </div>
+        <div class="chunk-body">${body}</div>
+        <div class="chunk-reason">${esc(e.enforcement.reason)}</div>
+      </div>`;
+  }).join('');
+
+  resultsEl.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px">
+      <span class="doc-level-badge ${documentLevel}">${levelIcon(documentLevel)} Document Level: ${documentLevel}</span>
+      <div class="summary-bar">
+        <span class="summary-pill badge-restricted">${summary.restricted} Restricted</span>
+        <span class="summary-pill badge-confidential">${summary.confidential} Confidential</span>
+        <span class="summary-pill badge-internal">${summary.internal} Internal</span>
+        <span class="summary-pill badge-public">${summary.public} Public</span>
+      </div>
+    </div>
+    <div class="chunk-list">${chunkCards}</div>
+    ${sanitisedFull !== input ? `
+    <div class="sanitised-box mt-20">
+      <div class="sanitised-box-header">✦ Sanitised Output</div>
+      <div class="sanitised-box-body">${esc(sanitisedFull)}</div>
+    </div>` : ''}`;
+});
+
+// ── Tab 2: LLM Guard ──
+document.getElementById('llm-btn').addEventListener('click', () => {
+  const input   = document.getElementById('llm-input').value.trim();
+  const origEl  = document.getElementById('llm-original');
+  const saniEl  = document.getElementById('llm-sanitised');
+  const banner  = document.getElementById('llm-banner');
+  const redEl   = document.getElementById('llm-redactions');
+
+  if (!input) {
+    origEl.textContent = ''; saniEl.textContent = '';
+    banner.className = 'banner hidden'; redEl.innerHTML = '';
+    return;
+  }
+
+  const result = guardLLMInput(input);
+  origEl.textContent = input;
+  saniEl.textContent = result.sanitised || '';
+
+  if (!result.allowed) {
+    banner.className = 'banner banner-blocked';
+    banner.innerHTML = `🔴 <span>Blocked — ${esc(result.reason)}</span>`;
+    addAuditEntry('BLOCK', 'RESTRICTED', 'llm', result.reason.slice(0,80));
+  } else {
+    banner.className = 'banner banner-safe';
+    banner.innerHTML = result.redactions.length
+      ? `🟡 <span>Sent with ${result.redactions.length} redaction(s) — review sanitised output</span>`
+      : `🟢 <span>Safe to send — no sensitive data detected</span>`;
+    addAuditEntry(
+      result.redactions.length ? 'REDACT' : 'ALLOW',
+      result.redactions.length ? 'CONFIDENTIAL' : 'PUBLIC',
+      'llm', `${result.redactions.length} redaction(s)`
+    );
+  }
+
+  let redHTML = '';
+  if (result.redactions && result.redactions.length) {
+    redHTML += `<div class="card-title">Redactions Made</div>` +
+      result.redactions.map(r => `
+        <div class="redaction-item">
+          <span class="ri-orig">${esc(truncate(r.original, 30))}</span>
+          <span class="ri-arrow">→</span>
+          <span class="ri-token">[${esc(r.placeholder)}]</span>
+          <span class="ri-reason">${esc(r.reason)}</span>
+        </div>`).join('');
+  }
+  if (result.blockedChunks && result.blockedChunks.length) {
+    redHTML += `<div class="card-title mt-16" style="color:var(--red)">Blocked Sections</div>` +
+      result.blockedChunks.map(bc => `
+        <div class="redaction-item" style="flex-direction:column;align-items:flex-start">
+          <span style="font-size:12px;font-family:monospace;color:var(--red)">${esc(bc.chunk)}</span>
+          <span style="font-size:11.5px;color:var(--muted)">${esc(bc.reason)}</span>
+        </div>`).join('');
+  }
+  redEl.innerHTML = redHTML;
+});
+
+// ── Tab 4: Policy Config ──
+function renderRules() {
+  const grid = document.getElementById('rules-grid');
+  const patternCards = Object.values(RULES.patterns).map(def => `
+    <div class="rule-card">
+      <div class="rule-card-header">
+        <span class="rule-card-name">${esc(def.label)}</span>
+        <span class="badge badge-${LEVEL_NAMES[def.level].toLowerCase()}">${LEVEL_NAMES[def.level]}</span>
+      </div>
+      <div class="rule-card-meta">${esc(def.regex.source.slice(0,55))}${def.regex.source.length>55?'…':''}</div>
+      <div style="font-size:11.5px;color:var(--muted)">Layer 1 · Regex Pattern</div>
+    </div>`).join('');
+
+  const entityCards = Object.values(RULES.entities).map(def => `
+    <div class="rule-card">
+      <div class="rule-card-header">
+        <span class="rule-card-name">${esc(def.label)}</span>
+        <span class="badge badge-${LEVEL_NAMES[def.level].toLowerCase()}">${LEVEL_NAMES[def.level]}</span>
+      </div>
+      <div class="rule-card-meta">${def.keywords.slice(0,4).map(esc).join(', ')}${def.keywords.length>4?` +${def.keywords.length-4} more`:''}</div>
+      <div style="font-size:11.5px;color:var(--muted)">Layer 2 · Keyword List</div>
+    </div>`).join('');
+
+  const customCards = RULES.customRules.map((rule, idx) => `
+    <div class="rule-card">
+      <div class="rule-card-header">
+        <span class="rule-card-name">${esc(rule.name)}</span>
+        <span class="badge badge-${LEVEL_NAMES[rule.level].toLowerCase()}">${LEVEL_NAMES[rule.level]}</span>
+        <label class="toggle" style="margin-left:auto" title="Toggle rule">
+          <input type="checkbox" ${rule.enabled?'checked':''} data-idx="${idx}" class="custom-rule-toggle">
+          <span class="toggle-track"></span>
+          <span class="toggle-thumb"></span>
+        </label>
+      </div>
+      <div class="rule-card-meta">${esc(rule.pattern)}</div>
+      <div style="font-size:11.5px;color:var(--muted)">Layer 4 · Custom Rule</div>
+    </div>`).join('');
+
+  grid.innerHTML = patternCards + entityCards + customCards;
+
+  grid.querySelectorAll('.custom-rule-toggle').forEach(cb => {
+    cb.addEventListener('change', e => {
+      RULES.customRules[parseInt(e.target.dataset.idx)].enabled = e.target.checked;
+    });
+  });
+}
+renderRules();
+
+document.getElementById('add-rule-btn').addEventListener('click', () => {
+  const name    = document.getElementById('new-rule-name').value.trim();
+  const pattern = document.getElementById('new-rule-pattern').value.trim();
+  const level   = parseInt(document.getElementById('new-rule-level').value);
+  const msgEl   = document.getElementById('add-rule-msg');
+
+  if (!name || !pattern) {
+    msgEl.textContent = 'Name and Pattern are required.';
+    msgEl.style.color = 'var(--red)'; return;
+  }
+  try { new RegExp(pattern); } catch(_) {
+    msgEl.textContent = 'Invalid regex pattern.';
+    msgEl.style.color = 'var(--red)'; return;
+  }
+  RULES.customRules.push({ name, pattern, label: name, level, enabled: true });
+  renderRules();
+  document.getElementById('new-rule-name').value    = '';
+  document.getElementById('new-rule-pattern').value = '';
+  document.getElementById('new-rule-level').value   = '2';
+  msgEl.textContent = `✓ Rule "${name}" added.`;
+  msgEl.style.color = 'var(--green)';
+  setTimeout(() => { msgEl.textContent = ''; }, 3000);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel — Popup Preview</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #d1d5db;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    padding: 40px 16px;
+  }
+
+  /* ── Popup wrapper ── */
+  #popup {
+    width: 360px;
+    min-height: 480px;
+    background: #f7f8fa;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  #header {
+    background: #1f2328;
+    padding: 14px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #header .brand { display: flex; align-items: center; gap: 8px; flex: 1; }
+  #header .brand-text { line-height: 1.25; }
+  #header .brand-name { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: .3px; }
+  #header .brand-sub  { color: #8b949e; font-size: 11px; }
+  #header .status-area { display: flex; align-items: center; gap: 6px; }
+  #status-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    transition: background .3s;
+  }
+  #status-dot.active  { background: #22c55e; }
+  #status-dot.paused  { background: #6b7280; }
+  #status-label { font-size: 11px; font-weight: 600; transition: color .3s; }
+  #status-label.active { color: #4ade80; }
+  #status-label.paused { color: #9ca3af; }
+
+  /* ── Toggle row ── */
+  #toggle-row {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 11px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #toggle-row .toggle-label-group .label-main { font-size: 13px; font-weight: 600; color: #1f2328; }
+  #toggle-row .toggle-label-group .label-sub  { font-size: 11px; color: #57606a; margin-top: 1px; }
+
+  /* iOS-style toggle */
+  .ios-toggle {
+    position: relative; width: 44px; height: 26px; cursor: pointer; user-select: none;
+  }
+  .ios-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .ios-track {
+    position: absolute; inset: 0; border-radius: 13px;
+    background: #9ca3af; transition: background .25s;
+  }
+  .ios-toggle input:checked + .ios-track { background: #3b82d4; }
+  .ios-thumb {
+    position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    transition: transform .25s;
+  }
+  .ios-toggle input:checked ~ .ios-thumb { transform: translateX(18px); }
+
+  /* ── Tab bar ── */
+  #tab-bar {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+  }
+  .tab-btn {
+    flex: 1; padding: 9px 4px 8px; border: none; background: none; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: #57606a;
+    border-bottom: 2px solid transparent;
+    transition: color .2s, border-color .2s;
+  }
+  .tab-btn.active { color: #3b82d4; border-bottom-color: #3b82d4; }
+  .tab-btn:hover:not(.active) { color: #1f2328; }
+
+  /* ── Panel base ── */
+  .panel { display: none; padding: 14px 14px 16px; flex-direction: column; gap: 10px; }
+  .panel.active { display: flex; }
+
+  /* ── Stat cards grid ── */
+  #stats-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .stat-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 10px 12px 9px; display: flex; flex-direction: column; gap: 2px;
+  }
+  .stat-label { font-size: 11px; color: #57606a; font-weight: 500; }
+  .stat-value { font-size: 26px; font-weight: 700; line-height: 1.1; }
+  .stat-value.red    { color: #ef4444; }
+  .stat-value.orange { color: #f97316; }
+  .stat-value.yellow { color: #ca8a04; }
+  .stat-value.green  { color: #22c55e; }
+
+  .monitoring-text { text-align: center; font-size: 11px; color: #57606a; padding: 2px 0 0; }
+
+  /* ── Log entries ── */
+  #log-list {
+    max-height: 310px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
+    scrollbar-width: thin; scrollbar-color: #d1d5db transparent;
+  }
+  #log-list::-webkit-scrollbar { width: 4px; }
+  #log-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+
+  .log-entry {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 7px; padding: 8px 10px;
+  }
+  .log-top { display: flex; align-items: center; gap: 6px; }
+  .log-top .log-site { font-size: 12px; font-weight: 600; color: #1f2328; flex: 1; }
+  .log-top .log-time { font-size: 10px; color: #8b949e; white-space: nowrap; }
+  .log-findings { font-size: 11px; color: #57606a; margin-top: 4px; }
+
+  .badge {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .badge-BLOCK  { background: #fef2f2; color: #ef4444; }
+  .badge-REDACT { background: #fff7ed; color: #f97316; }
+  .badge-WARN   { background: #fefce8; color: #ca8a04; }
+  .badge-ALLOW  { background: #f0fdf4; color: #22c55e; }
+
+  .log-empty { text-align: center; padding: 32px 0; color: #9ca3af; font-size: 13px; }
+
+  #clear-log-btn {
+    margin-top: 2px; width: 100%; padding: 8px; border-radius: 7px;
+    border: 1px solid #e5e7eb; background: #fff; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: #ef4444;
+    transition: background .15s;
+  }
+  #clear-log-btn:hover { background: #fef2f2; }
+
+  /* ── Rules ── */
+  #rules-list { display: flex; flex-direction: column; gap: 6px; }
+  .rule-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 7px;
+    padding: 8px 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .rule-info { flex: 1; min-width: 0; }
+  .rule-name  { font-size: 12px; font-weight: 600; color: #1f2328; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rule-level { font-size: 10px; color: #57606a; margin-top: 1px; }
+
+  .rules-empty { text-align: center; padding: 16px 0; color: #9ca3af; font-size: 12px; }
+
+  /* ── Add rule form ── */
+  #add-rule-form {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 11px 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  #add-rule-form .form-title { font-size: 12px; font-weight: 700; color: #1f2328; }
+  .form-field { display: flex; flex-direction: column; gap: 3px; }
+  .form-field label { font-size: 11px; color: #57606a; font-weight: 500; }
+  .form-input, .form-select {
+    padding: 6px 9px; border: 1px solid #d1d5db; border-radius: 5px;
+    font-size: 12px; color: #1f2328; background: #f7f8fa;
+    outline: none; transition: border-color .15s;
+    font-family: inherit;
+  }
+  .form-input:focus, .form-select:focus { border-color: #3b82d4; background: #fff; }
+  #add-rule-btn {
+    width: 100%; padding: 8px; border-radius: 6px; border: none;
+    background: #3b82d4; color: #fff; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+  }
+  #add-rule-btn:hover { background: #2563eb; }
+  #form-msg { font-size: 11px; text-align: center; min-height: 14px; }
+  #form-msg.ok  { color: #22c55e; }
+  #form-msg.err { color: #ef4444; }
+</style>
+</head>
+<body>
+
+<div id="popup">
+
+  <!-- Header -->
+  <div id="header">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 2L4 6.5V14C4 19.25 8.4 24.17 14 26C19.6 24.17 24 19.25 24 14V6.5L14 2Z" fill="#3b82d4" opacity=".18"/>
+        <path d="M14 2L4 6.5V14C4 19.25 8.4 24.17 14 26C19.6 24.17 24 19.25 24 14V6.5L14 2Z" stroke="#3b82d4" stroke-width="1.7" stroke-linejoin="round"/>
+        <path d="M9.5 14l3 3 6-6" stroke="#3b82d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="brand-text">
+        <div class="brand-name">Sentinel</div>
+        <div class="brand-sub">LLM Data Guard</div>
+      </div>
+    </div>
+    <div class="status-area">
+      <div id="status-dot" class="active"></div>
+      <span id="status-label" class="active">Active</span>
+    </div>
+  </div>
+
+  <!-- Toggle row -->
+  <div id="toggle-row">
+    <div class="toggle-label-group">
+      <div class="label-main">Guard Enabled</div>
+      <div class="label-sub">Intercept sensitive LLM inputs</div>
+    </div>
+    <label class="ios-toggle">
+      <input type="checkbox" id="master-toggle" checked>
+      <div class="ios-track"></div>
+      <div class="ios-thumb"></div>
+    </label>
+  </div>
+
+  <!-- Tab bar -->
+  <div id="tab-bar">
+    <button class="tab-btn active" data-tab="summary">📊 Summary</button>
+    <button class="tab-btn" data-tab="log">📋 Log</button>
+    <button class="tab-btn" data-tab="rules">⚙️ Rules</button>
+  </div>
+
+  <!-- Panel: Summary -->
+  <div class="panel active" id="panel-summary">
+    <div id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Blocked Today</div>
+        <div class="stat-value red" id="count-block">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Redacted Today</div>
+        <div class="stat-value orange" id="count-redact">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Warned Today</div>
+        <div class="stat-value yellow" id="count-warn">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Allowed Today</div>
+        <div class="stat-value green" id="count-allow">0</div>
+      </div>
+    </div>
+    <div class="monitoring-text">Monitoring: ChatGPT · Claude · Gemini · Copilot · Perplexity</div>
+  </div>
+
+  <!-- Panel: Log -->
+  <div class="panel" id="panel-log">
+    <div id="log-list"></div>
+    <button id="clear-log-btn">🗑 Clear Log</button>
+  </div>
+
+  <!-- Panel: Rules -->
+  <div class="panel" id="panel-rules">
+    <div id="rules-list"></div>
+    <div id="add-rule-form">
+      <div class="form-title">+ New Rule</div>
+      <div class="form-field">
+        <label for="rule-name-input">Rule Name</label>
+        <input class="form-input" id="rule-name-input" type="text" placeholder="e.g. Employee ID">
+      </div>
+      <div class="form-field">
+        <label for="rule-pattern-input">Pattern (regex)</label>
+        <input class="form-input" id="rule-pattern-input" type="text" placeholder="e.g. EMP-\d{6}">
+      </div>
+      <div class="form-field">
+        <label for="rule-level-select">Sensitivity Level</label>
+        <select class="form-select" id="rule-level-select">
+          <option value="INTERNAL">INTERNAL</option>
+          <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+          <option value="RESTRICTED">RESTRICTED</option>
+        </select>
+      </div>
+      <button id="add-rule-btn">+ Add Rule</button>
+      <div id="form-msg"></div>
+    </div>
+  </div>
+
+</div><!-- /#popup -->
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   MOCK CHROME API
+══════════════════════════════════════════════════════════════ */
+const chrome = {
+  storage: {
+    _sync: {
+      sentinelEnabled: true,
+      sentinelCustomRules: [
+        { id: 'r1', name: 'AWS Secret Key',   pattern: 'AKIA[0-9A-Z]{16}',    level: 'RESTRICTED',   enabled: true  },
+        { id: 'r2', name: 'Internal Ticket',  pattern: 'JIRA-\\d{4,6}',       level: 'INTERNAL',     enabled: true  },
+        { id: 'r3', name: 'Patient Record',   pattern: 'MRN-\\d{8}',          level: 'CONFIDENTIAL', enabled: false },
+      ]
+    },
+    _local: {
+      sentinelLog: (function () {
+        const today = new Date();
+        function ts(minsAgo) {
+          const d = new Date(today - minsAgo * 60000);
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        return [
+          { id: 'e1', action: 'BLOCK',  site: 'chatgpt.com',        time: ts(4),   findings: 'AWS Secret Key, API Token'      },
+          { id: 'e2', action: 'REDACT', site: 'claude.ai',           time: ts(11),  findings: 'IBAN, Money Amount'             },
+          { id: 'e3', action: 'WARN',   site: 'gemini.google.com',   time: ts(18),  findings: 'Personal Name, Phone Number'   },
+          { id: 'e4', action: 'ALLOW',  site: 'chatgpt.com',         time: ts(27),  findings: 'No sensitive data detected'    },
+          { id: 'e5', action: 'BLOCK',  site: 'claude.ai',           time: ts(44),  findings: 'Credit Card Number'            },
+          { id: 'e6', action: 'REDACT', site: 'gemini.google.com',   time: ts(62),  findings: 'SSN, Date of Birth'            },
+          { id: 'e7', action: 'WARN',   site: 'chatgpt.com',         time: ts(95),  findings: 'Email Address, Employee ID'    },
+          { id: 'e8', action: 'ALLOW',  site: 'claude.ai',           time: ts(130), findings: 'No sensitive data detected'    },
+        ];
+      }())
+    },
+    sync: {
+      get: function(keys, cb) {
+        const result = {};
+        if (typeof keys === 'string') keys = [keys];
+        if (Array.isArray(keys)) {
+          keys.forEach(k => { if (k in chrome.storage._sync) result[k] = chrome.storage._sync[k]; });
+        } else if (typeof keys === 'object' && keys !== null) {
+          Object.keys(keys).forEach(k => {
+            result[k] = k in chrome.storage._sync ? chrome.storage._sync[k] : keys[k];
+          });
+        }
+        if (cb) cb(result);
+      },
+      set: function(obj, cb) {
+        Object.assign(chrome.storage._sync, obj);
+        if (cb) cb();
+      }
+    },
+    local: {
+      get: function(keys, cb) {
+        const result = {};
+        if (typeof keys === 'string') keys = [keys];
+        if (Array.isArray(keys)) {
+          keys.forEach(k => { if (k in chrome.storage._local) result[k] = chrome.storage._local[k]; });
+        } else if (typeof keys === 'object' && keys !== null) {
+          Object.keys(keys).forEach(k => {
+            result[k] = k in chrome.storage._local ? chrome.storage._local[k] : keys[k];
+          });
+        }
+        if (cb) cb(result);
+      },
+      set: function(obj, cb) {
+        Object.assign(chrome.storage._local, obj);
+        if (cb) cb();
+      }
+    },
+    onChanged: { addListener: function() {} }
+  },
+  runtime: {
+    sendMessage: function(msg, cb) {
+      if (msg.type === 'GET_LOG') {
+        if (cb) cb({ log: chrome.storage._local.sentinelLog || [] });
+      }
+      if (msg.type === 'CLEAR_LOG') {
+        chrome.storage._local.sentinelLog = [];
+        if (cb) cb();
+      }
+      if (msg.type === 'SENTINEL_LOG') {
+        const log = chrome.storage._local.sentinelLog || [];
+        log.unshift(msg.payload);
+        chrome.storage._local.sentinelLog = log;
+        if (cb) cb();
+      }
+    }
+  },
+  action: {
+    setBadgeText: function() {},
+    setBadgeBackgroundColor: function() {}
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+let enabled = chrome.storage._sync.sentinelEnabled;
+let activeTab = 'summary';
+
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════════ */
+function getLog() {
+  return chrome.storage._local.sentinelLog || [];
+}
+
+function getRules() {
+  return chrome.storage._sync.sentinelCustomRules || [];
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: STATUS
+══════════════════════════════════════════════════════════════ */
+function renderStatus() {
+  const dot   = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  const tog   = document.getElementById('master-toggle');
+  if (enabled) {
+    dot.className   = 'active';
+    label.className = 'active';
+    label.textContent = 'Active';
+    tog.checked = true;
+  } else {
+    dot.className   = 'paused';
+    label.className = 'paused';
+    label.textContent = 'Paused';
+    tog.checked = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: SUMMARY
+══════════════════════════════════════════════════════════════ */
+function renderSummary() {
+  const log = getLog();
+  const counts = { BLOCK: 0, REDACT: 0, WARN: 0, ALLOW: 0 };
+  log.forEach(e => { if (e.action in counts) counts[e.action]++; });
+  document.getElementById('count-block').textContent  = counts.BLOCK;
+  document.getElementById('count-redact').textContent = counts.REDACT;
+  document.getElementById('count-warn').textContent   = counts.WARN;
+  document.getElementById('count-allow').textContent  = counts.ALLOW;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: LOG
+══════════════════════════════════════════════════════════════ */
+function renderLog() {
+  const list = document.getElementById('log-list');
+  const log  = getLog();
+
+  if (!log.length) {
+    list.innerHTML = '<div class="log-empty">No log entries yet.</div>';
+    return;
+  }
+
+  list.innerHTML = log.map(e => {
+    const badgeClass = 'badge badge-' + escHtml(e.action);
+    return `
+      <div class="log-entry">
+        <div class="log-top">
+          <span class="${badgeClass}">${escHtml(e.action)}</span>
+          <span class="log-site">${escHtml(e.site)}</span>
+          <span class="log-time">${escHtml(e.time)}</span>
+        </div>
+        <div class="log-findings">${escHtml(e.findings)}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER: RULES
+══════════════════════════════════════════════════════════════ */
+function renderRules() {
+  const container = document.getElementById('rules-list');
+  const rules = getRules();
+
+  if (!rules.length) {
+    container.innerHTML = '<div class="rules-empty">No custom rules yet.</div>';
+    return;
+  }
+
+  container.innerHTML = rules.map((r, i) => `
+    <div class="rule-card">
+      <div class="rule-info">
+        <div class="rule-name">${escHtml(r.name)}</div>
+        <div class="rule-level">${escHtml(r.level)} · <code style="font-size:10px;color:#8b949e">${escHtml(r.pattern)}</code></div>
+      </div>
+      <label class="ios-toggle">
+        <input type="checkbox" class="rule-toggle" data-idx="${i}" ${r.enabled ? 'checked' : ''}>
+        <div class="ios-track"></div>
+        <div class="ios-thumb"></div>
+      </label>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.rule-toggle').forEach(cb => {
+    cb.addEventListener('change', function() {
+      const idx = parseInt(this.dataset.idx, 10);
+      const rules = getRules();
+      rules[idx].enabled = this.checked;
+      chrome.storage.sync.set({ sentinelCustomRules: rules });
+      renderRules();
+    });
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER ALL
+══════════════════════════════════════════════════════════════ */
+function renderAll() {
+  renderStatus();
+  renderSummary();
+  renderLog();
+  renderRules();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    activeTab = this.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('panel-' + activeTab).classList.add('active');
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   MASTER TOGGLE
+══════════════════════════════════════════════════════════════ */
+document.getElementById('master-toggle').addEventListener('change', function() {
+  enabled = this.checked;
+  chrome.storage.sync.set({ sentinelEnabled: enabled });
+  renderStatus();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   CLEAR LOG
+══════════════════════════════════════════════════════════════ */
+document.getElementById('clear-log-btn').addEventListener('click', function() {
+  chrome.runtime.sendMessage({ type: 'CLEAR_LOG' }, function() {
+    renderLog();
+    renderSummary();
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   ADD RULE
+══════════════════════════════════════════════════════════════ */
+document.getElementById('add-rule-btn').addEventListener('click', function() {
+  const nameEl    = document.getElementById('rule-name-input');
+  const patternEl = document.getElementById('rule-pattern-input');
+  const levelEl   = document.getElementById('rule-level-select');
+  const msgEl     = document.getElementById('form-msg');
+
+  const name    = nameEl.value.trim();
+  const pattern = patternEl.value.trim();
+  const level   = levelEl.value;
+
+  msgEl.className = '';
+  msgEl.textContent = '';
+
+  if (!name) {
+    msgEl.className = 'err';
+    msgEl.textContent = 'Rule name is required.';
+    nameEl.focus();
+    return;
+  }
+  if (!pattern) {
+    msgEl.className = 'err';
+    msgEl.textContent = 'Pattern is required.';
+    patternEl.focus();
+    return;
+  }
+  try { new RegExp(pattern); } catch(e) {
+    msgEl.className = 'err';
+    msgEl.textContent = 'Invalid regex pattern.';
+    patternEl.focus();
+    return;
+  }
+
+  const rules = getRules();
+  rules.push({
+    id: 'r' + Date.now(),
+    name: name,
+    pattern: pattern,
+    level: level,
+    enabled: true
+  });
+  chrome.storage.sync.set({ sentinelCustomRules: rules });
+
+  nameEl.value    = '';
+  patternEl.value = '';
+  levelEl.value   = 'INTERNAL';
+
+  msgEl.className = 'ok';
+  msgEl.textContent = '✓ Rule added successfully.';
+  setTimeout(() => { msgEl.textContent = ''; msgEl.className = ''; }, 2500);
+
+  renderRules();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════ */
+renderAll();
+</script>
+</body>
+</html>

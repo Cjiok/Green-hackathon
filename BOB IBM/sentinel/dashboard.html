@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel — Startup Data Protection Platform</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2328;
+    --muted: #57606a;
+    --accent: #3b82d4;
+
+    --restricted-bg: #fef2f2;
+    --restricted-text: #ef4444;
+    --confidential-bg: #fff7ed;
+    --confidential-text: #f97316;
+    --internal-bg: #fefce8;
+    --internal-text: #f59e0b;
+    --public-bg: #f0fdf4;
+    --public-text: #22c55e;
+  }
+
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+
+  /* Header */
+  .header { background: #1f2328; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-title { font-size: 20px; font-weight: 700; }
+  .header-subtitle { font-size: 12px; color: #8b949e; margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #8b949e; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+
+  /* Wrapper */
+  .wrapper { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; }
+
+  /* Tabs */
+  .tab-bar { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 24px; gap: 0; background: var(--surface); border-radius: 8px 8px 0 0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .tab-btn { flex: 1; padding: 14px 8px; border: none; background: none; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .tab-btn:hover { color: var(--text); background: var(--bg); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--surface); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-weight: 600; font-size: 14px; margin-bottom: 12px; color: var(--text); }
+
+  /* Form elements */
+  textarea, input[type="text"], select {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; font-family: inherit; font-size: 13px; color: var(--text);
+    background: var(--surface); resize: vertical; outline: none;
+    transition: border-color .15s;
+  }
+  textarea:focus, input[type="text"]:focus, select:focus { border-color: var(--accent); }
+  label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 6px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .87; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* Badges / Pills */
+  .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+  .badge-restricted  { background: var(--restricted-bg);  color: var(--restricted-text); }
+  .badge-confidential{ background: var(--confidential-bg);color: var(--confidential-text); }
+  .badge-internal    { background: var(--internal-bg);    color: var(--internal-text); }
+  .badge-public      { background: var(--public-bg);      color: var(--public-text); }
+  .badge-block  { background: var(--restricted-bg);  color: var(--restricted-text); }
+  .badge-warn   { background: var(--internal-bg);    color: var(--internal-text); }
+  .badge-redact { background: var(--confidential-bg);color: var(--confidential-text); }
+  .badge-allow  { background: var(--public-bg);      color: var(--public-text); }
+
+  /* Tag chips */
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; background: #e5e7eb; color: var(--muted); font-size: 11px; margin: 1px 2px; }
+
+  /* Summary row */
+  .summary-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+
+  /* Chunk cards */
+  .chunk-card { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+  .chunk-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 12px; }
+  .chunk-num { font-weight: 700; color: var(--muted); }
+  .chunk-body { padding: 10px 14px; font-size: 13px; line-height: 1.7; }
+  .chunk-footer { padding: 6px 14px 8px; font-size: 11px; color: var(--muted); font-style: italic; background: var(--bg); border-top: 1px solid var(--border); }
+  mark.matched { background: #fff3cd; color: #92400e; border-radius: 2px; padding: 0 2px; }
+
+  /* Sanitised output */
+  .sanitised-box { border: 1.5px solid #22c55e; border-radius: 6px; padding: 14px; margin-top: 12px; background: #f0fdf4; }
+  .sanitised-label { font-size: 12px; font-weight: 700; color: #16a34a; margin-bottom: 6px; }
+  .sanitised-text { font-size: 13px; color: var(--text); word-break: break-word; white-space: pre-wrap; }
+
+  /* LLM Guard */
+  .llm-banner { padding: 12px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+  .llm-banner.safe    { background: var(--public-bg); color: #16a34a; border: 1px solid #bbf7d0; }
+  .llm-banner.warn    { background: var(--internal-bg); color: #92400e; border: 1px solid #fde68a; }
+  .llm-banner.blocked { background: var(--restricted-bg); color: var(--restricted-text); border: 1px solid #fecaca; }
+  .side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 640px) { .side-by-side { grid-template-columns: 1fr; } }
+  .side-box { border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .side-box-title { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+  .side-box-text { font-size: 12px; white-space: pre-wrap; word-break: break-word; line-height: 1.7; }
+  .redaction-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 6px; font-size: 12px; }
+  .redaction-original { color: var(--restricted-text); font-family: monospace; text-decoration: line-through; }
+  .redaction-arrow { color: var(--muted); }
+  .redaction-placeholder { color: #16a34a; font-family: monospace; font-weight: 700; }
+  .redaction-reason { color: var(--muted); font-style: italic; }
+
+  /* Audit Log */
+  .filter-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .filter-pill { padding: 5px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: background .12s, color .12s; color: var(--muted); }
+  .filter-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 10px; background: var(--bg); color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid var(--border); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .audit-empty { text-align: center; color: var(--muted); padding: 24px; }
+
+  /* Policy Config */
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .rule-card { border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: var(--surface); }
+  .rule-card-name { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .rule-card-regex { font-size: 10px; color: var(--muted); font-family: monospace; word-break: break-all; margin: 6px 0; background: var(--bg); padding: 4px 6px; border-radius: 4px; max-height: 44px; overflow: hidden; }
+  .rule-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .toggle-wrap { display: flex; align-items: center; gap: 6px; }
+  .toggle { position: relative; width: 32px; height: 18px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 18px; transition: .2s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 12px; height: 12px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .toggle input:checked + .toggle-slider { background: var(--accent); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(14px); }
+
+  .add-rule-form { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end; }
+  @media (max-width: 700px) { .add-rule-form { grid-template-columns: 1fr; } }
+  .form-msg { font-size: 12px; margin-top: 8px; padding: 6px 10px; border-radius: 4px; }
+  .form-msg.success { background: var(--public-bg); color: #16a34a; }
+  .form-msg.error   { background: var(--restricted-bg); color: var(--restricted-text); }
+
+  /* Context row */
+  .context-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+  .context-row > * { flex: 1; min-width: 140px; }
+  .context-row .btn { flex: 0 0 auto; }
+
+  /* Misc */
+  .mt8 { margin-top: 8px; }
+  .mt16 { margin-top: 16px; }
+  .hidden { display: none !important; }
+  .doc-badge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .doc-badge-label { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <path d="M16 2L4 7V16C4 22.627 9.373 28 16 30C22.627 28 28 22.627 28 16V7L16 2Z" fill="#3b82d4" opacity=".18"/>
+      <path d="M16 2L4 7V16C4 22.627 9.373 28 16 30C22.627 28 28 22.627 28 16V7L16 2Z" stroke="#3b82d4" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M11 16L14.5 19.5L21 12.5" stroke="#3b82d4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <div class="header-title">Sentinel</div>
+      <div class="header-subtitle">Startup Data Protection Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <span>Engine Active</span>
+  </div>
+</div>
+
+<div class="wrapper">
+  <!-- TAB BAR -->
+  <div class="tab-bar" style="margin-top:20px;">
+    <button class="tab-btn active" data-tab="scanner">🔍 Scanner</button>
+    <button class="tab-btn" data-tab="llm">🤖 LLM Guard</button>
+    <button class="tab-btn" data-tab="audit">📋 Audit Log</button>
+    <button class="tab-btn" data-tab="policy">⚙️ Policy Config</button>
+  </div>
+
+  <!-- TAB 1: SCANNER -->
+  <div id="tab-scanner" class="panel active">
+    <div class="card">
+      <div class="card-title">Document Scanner</div>
+      <label for="scan-text">Paste or type text to scan</label>
+      <textarea id="scan-text" rows="8" placeholder="Our runway is 6 months. Burn rate is $240k/month. We're in term sheet negotiations with Apex Capital for a $4.2M Series A. Contact jane@acme.com or 415-555-0192. Project Nighthawk is the codename. API key: sk_live_abc123xyz789secret. Never tell anyone about the cap table restructure. IBAN: AT12345678901234. Forward 14 thousand euros."></textarea>
+      <div class="context-row">
+        <div>
+          <label for="scan-context">Context</label>
+          <select id="scan-context">
+            <option value="view">View Only</option>
+            <option value="llm">LLM Input</option>
+            <option value="share">File Share</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="scan-btn">🔍 Scan &amp; Enforce</button>
+      </div>
+    </div>
+    <div id="scan-results" class="hidden">
+      <div class="card">
+        <div class="doc-badge-row">
+          <span class="doc-badge-label">Document Sensitivity:</span>
+          <span id="doc-badge" class="badge"></span>
+        </div>
+        <div class="summary-row" id="summary-row"></div>
+        <div id="chunk-cards"></div>
+        <div class="sanitised-box">
+          <div class="sanitised-label">✓ Sanitised Output</div>
+          <div class="sanitised-text" id="sanitised-out"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: LLM GUARD -->
+  <div id="tab-llm" class="panel">
+    <div class="card">
+      <div class="card-title">LLM Prompt Guard</div>
+      <label for="llm-text">Prompt to check before sending to LLM</label>
+      <textarea id="llm-text" rows="6" placeholder="Our Series A runway is 4 months. Acquisition target codenamed Project X. Contact cfo@acme.com, call 212-555-0134. API_KEY=sk_prod_zk92mabcXXXXXXXXX. IBAN: GB29NWBK60161331926819. Forward 50 thousand dollars. What should our investor update say?"></textarea>
+      <div style="margin-top:10px;">
+        <button class="btn btn-primary" id="llm-btn">🛡️ Check &amp; Send</button>
+      </div>
+    </div>
+    <div id="llm-results" class="hidden">
+      <div id="llm-banner" class="llm-banner"></div>
+      <div class="side-by-side">
+        <div class="side-box">
+          <div class="side-box-title">📄 Original Input</div>
+          <div class="side-box-text" id="llm-original"></div>
+        </div>
+        <div class="side-box" style="border-color:#22c55e; background:#f0fdf4;">
+          <div class="side-box-title" style="color:#16a34a;">✦ Sanitised Input</div>
+          <div class="side-box-text" id="llm-sanitised"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Redactions Made</div>
+        <div id="llm-redactions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: AUDIT LOG -->
+  <div id="tab-audit" class="panel">
+    <div class="card">
+      <div class="card-title">Audit Log</div>
+      <div class="filter-pills" id="filter-pills">
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="BLOCK">Blocked</button>
+        <button class="filter-pill" data-filter="WARN">Warned</button>
+        <button class="filter-pill" data-filter="REDACT">Redacted</button>
+        <button class="filter-pill" data-filter="ALLOW">Allowed</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="audit-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Label</th>
+              <th>Context</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="audit-body"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:16px; text-align:right;">
+        <button class="btn btn-danger btn-sm" id="clear-log-btn">🗑 Clear Log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: POLICY CONFIG -->
+  <div id="tab-policy" class="panel">
+    <div class="card">
+      <div class="card-title">Active Detection Rules</div>
+      <div class="rules-grid" id="rules-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Add Custom Rule</div>
+      <div class="add-rule-form">
+        <div>
+          <label for="rule-name">Rule Name</label>
+          <input type="text" id="rule-name" placeholder="e.g. Project Nighthawk">
+        </div>
+        <div>
+          <label for="rule-pattern">Regex Pattern</label>
+          <input type="text" id="rule-pattern" placeholder="e.g. \bNighthawk\b">
+        </div>
+        <div>
+          <label for="rule-level">Sensitivity</label>
+          <select id="rule-level">
+            <option value="1">INTERNAL</option>
+            <option value="2">CONFIDENTIAL</option>
+            <option value="3" selected>RESTRICTED</option>
+          </select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" id="add-rule-btn">+ Add Rule</button>
+        </div>
+      </div>
+      <div id="rule-msg" class="hidden form-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SENTINEL DETECTION ENGINE
+// ============================================================
+
+var LEVEL = { PUBLIC: 0, INTERNAL: 1, CONFIDENTIAL: 2, RESTRICTED: 3 };
+var LEVEL_NAME = ['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'];
+
+// Layer 1 — Regex patterns
+var PATTERN_RULES = [
+  { label: 'API Key',      level: 3, regex: /\b(sk_live_|sk_prod_|sk-[A-Za-z0-9]{20,}|api[_-]?key[_-]?[:=]\s*)[A-Za-z0-9_\-]{16,}/gi },
+  { label: 'Private Key',  level: 3, regex: /-----BEGIN (RSA |EC )?PRIVATE KEY-----/gi },
+  { label: 'Credential',   level: 3, regex: /\b(password|passwd|secret|token)\s*[:=]\s*\S+/gi },
+  { label: 'Credit Card',  level: 3, regex: /\b(?:\d[ -]?){13,16}\b/g },
+  { label: 'SSN',          level: 3, regex: /\b\d{3}-\d{2}-\d{4}\b/g },
+  { label: 'IBAN',         level: 3, regex: /\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}\b/g },
+  { label: 'Email',        level: 2, regex: /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/g },
+  { label: 'Phone',        level: 2, regex: /(\+?1[\s.\-]?)?\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/g },
+  { label: 'Money',        level: 2, regex: /(\$|€|£|EUR|USD|GBP)\s*\d[\d,]*\.?\d*\s*[kmb]?\b|\b\d[\d,]*\.?\d*\s*(euros?|dollars?|pounds?|thousand|million|billion|[kmb])\b/gi }
+];
+
+// Layer 2 — Keyword groups
+var KEYWORD_GROUPS = [
+  { label: 'Financial',  level: 2, keywords: ['burn rate','runway','arr','mrr','cap table','term sheet','series a','series b','pre-money','post-money','convertible note','safe note','equity','dilution'] },
+  { label: 'Legal/M&A',  level: 3, keywords: ['acquisition','merger','acquiring','acquire','due diligence','letter of intent','loi','nda','non-disclosure','litigation','lawsuit','settlement'] },
+  { label: 'HR',         level: 2, keywords: ['salary','compensation','bonus','stock options','fired','laid off','performance review','offer letter'] },
+  { label: 'Strategic',  level: 3, keywords: ['never tell',"don't share",'between us','off the record','do not share','keep this quiet','pivot','not public'] }
+];
+
+// Layer 3 — Semantic heuristics
+var SEMANTIC_RULES = [
+  { regex: /\b(never tell|don.t share|between us|off the record|keep this quiet)\b/i, level: 3, label: 'Strategic Secret' },
+  { regex: /\b(acquire|acquiring|acquisition|merger|due diligence)\b/i,               level: 3, label: 'M&A Activity' },
+  { regex: /\b(term sheet|closing|round closes|fundraise|raise)\b/i,                  level: 3, label: 'Funding Activity' },
+  { regex: /\b(burn rate|runway|months of runway)\b/i,                                level: 2, label: 'Financial Health' },
+  { regex: /\b(pivot|pivoting|secret project|stealth)\b/i,                            level: 3, label: 'Strategic Pivot' }
+];
+
+// Layer 4 — Custom rules (toggleable)
+var CUSTOM_RULES = [
+  { name: 'Project Nighthawk', pattern: '\\bNighthawk\\b',    level: 3, enabled: true },
+  { name: 'Project X',         pattern: '\\bProject\\s+X\\b', level: 3, enabled: true },
+  { name: 'Cap Table',         pattern: '\\bcap\\s+table\\b', level: 3, enabled: true }
+];
+
+function getCustomRegex(rule) {
+  try { return new RegExp(rule.pattern, 'gi'); } catch(e) { return null; }
+}
+
+function levelClass(lvl) {
+  return ['public','internal','confidential','restricted'][lvl] || 'public';
+}
+
+function actionClass(action) {
+  return { ALLOW:'allow', WARN:'warn', REDACT:'redact', BLOCK:'block' }[action] || 'allow';
+}
+
+function enforceAction(levelName, ctx) {
+  var lvl = LEVEL[levelName] !== undefined ? LEVEL[levelName] : 0;
+  if (lvl === 0) return 'ALLOW';
+  if (lvl === 3) return 'BLOCK';
+  if (lvl === 1 && (ctx === 'email' || ctx === 'share')) return 'WARN';
+  if (lvl === 2 && ctx === 'llm')   return 'REDACT';
+  if (lvl === 2 && (ctx === 'email' || ctx === 'share')) return 'WARN';
+  return 'ALLOW';
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function scanText(text) {
+  var findings = [];
+
+  // Layer 1
+  PATTERN_RULES.forEach(function(rule) {
+    var re = new RegExp(rule.regex.source, rule.regex.flags);
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      findings.push({ label: rule.label, value: m[0], level: rule.level, layer: 'Layer 1 · Regex' });
+    }
+  });
+
+  // Layer 2 — keywords
+  KEYWORD_GROUPS.forEach(function(group) {
+    group.keywords.forEach(function(kw) {
+      var re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        findings.push({ label: group.label + ' Keyword', value: m[0], level: group.level, layer: 'Layer 2 · Keywords' });
+      }
+    });
+  });
+
+  // Layer 3 — semantic
+  SEMANTIC_RULES.forEach(function(rule) {
+    var re = new RegExp(rule.regex.source, rule.regex.flags);
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      findings.push({ label: rule.label, value: m[0], level: rule.level, layer: 'Layer 3 · Semantic' });
+    }
+  });
+
+  // Layer 4 — custom
+  CUSTOM_RULES.forEach(function(rule) {
+    if (!rule.enabled) return;
+    var re = getCustomRegex(rule);
+    if (!re) return;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      findings.push({ label: rule.name, value: m[0], level: rule.level, layer: 'Layer 4 · Custom' });
+    }
+  });
+
+  var maxLevel = 0;
+  findings.forEach(function(f) { if (f.level > maxLevel) maxLevel = f.level; });
+
+  return { level: maxLevel, levelName: LEVEL_NAME[maxLevel], findings: findings };
+}
+
+function redactText(text) {
+  var result = text;
+
+  PATTERN_RULES.forEach(function(rule) {
+    var re = new RegExp(rule.regex.source, rule.regex.flags);
+    result = result.replace(re, '[REDACTED_' + rule.label.toUpperCase().replace(/\s/g,'_') + ']');
+  });
+
+  KEYWORD_GROUPS.forEach(function(group) {
+    if (group.level >= 3) {
+      group.keywords.forEach(function(kw) {
+        var re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+        result = result.replace(re, '[REDACTED_' + group.label.toUpperCase().replace(/[\s\/&]/g,'_') + ']');
+      });
+    }
+  });
+
+  CUSTOM_RULES.forEach(function(rule) {
+    if (!rule.enabled) return;
+    var re = getCustomRegex(rule);
+    if (!re) return;
+    result = result.replace(re, '[REDACTED_' + rule.name.toUpperCase().replace(/\s/g,'_') + ']');
+  });
+
+  SEMANTIC_RULES.forEach(function(rule) {
+    var re = new RegExp(rule.regex.source, rule.regex.flags);
+    result = result.replace(re, '[REDACTED_SEMANTIC]');
+  });
+
+  return result;
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+var auditLog = [
+  { ts: '2024-06-01 08:12:04', user: 'alice@acme.com',   action: 'BLOCK',  label: 'API Key',          ctx: 'Email',      status: 'Blocked' },
+  { ts: '2024-06-01 08:15:31', user: 'bob@acme.com',     action: 'WARN',   label: 'Financial',        ctx: 'File Share', status: 'Warned' },
+  { ts: '2024-06-01 09:02:17', user: 'carol@acme.com',   action: 'REDACT', label: 'M&A Activity',     ctx: 'LLM Input',  status: 'Redacted' },
+  { ts: '2024-06-01 09:47:55', user: 'dave@acme.com',    action: 'ALLOW',  label: 'Public',           ctx: 'View Only',  status: 'Allowed' },
+  { ts: '2024-06-01 10:30:00', user: 'eve@acme.com',     action: 'BLOCK',  label: 'IBAN',             ctx: 'Email',      status: 'Blocked' },
+  { ts: '2024-06-01 10:55:12', user: 'frank@acme.com',   action: 'WARN',   label: 'HR Keyword',       ctx: 'File Share', status: 'Warned' },
+  { ts: '2024-06-01 11:10:44', user: 'grace@acme.com',   action: 'REDACT', label: 'Credential',       ctx: 'LLM Input',  status: 'Redacted' },
+  { ts: '2024-06-01 11:45:03', user: 'hank@acme.com',    action: 'BLOCK',  label: 'Strategic Secret', ctx: 'Email',      status: 'Blocked' },
+  { ts: '2024-06-01 12:00:59', user: 'iris@acme.com',    action: 'ALLOW',  label: 'Public',           ctx: 'View Only',  status: 'Allowed' },
+  { ts: '2024-06-01 12:30:22', user: 'jake@acme.com',    action: 'WARN',   label: 'Funding Activity', ctx: 'Email',      status: 'Warned' }
+];
+
+function nowTs() {
+  var d = new Date();
+  return d.toISOString().replace('T',' ').slice(0,19);
+}
+
+function appendAudit(action, label, ctx) {
+  auditLog.unshift({ ts: nowTs(), user: 'you@acme.com', action: action, label: label, ctx: ctx, status: actionToStatus(action) });
+  renderAudit();
+}
+
+function actionToStatus(a) {
+  return { ALLOW:'Allowed', WARN:'Warned', REDACT:'Redacted', BLOCK:'Blocked' }[a] || a;
+}
+
+function renderAudit() {
+  var filter = (document.querySelector('.filter-pill.active') || {}).dataset.filter || 'all';
+  var tbody = document.getElementById('audit-body');
+  var rows = auditLog.filter(function(r) { return filter === 'all' || r.action === filter; });
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="audit-empty">No entries found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(r) {
+    return '<tr>' +
+      '<td style="white-space:nowrap;color:var(--muted);">' + escapeHtml(r.ts) + '</td>' +
+      '<td>' + escapeHtml(r.user) + '</td>' +
+      '<td><span class="badge badge-' + actionClass(r.action) + '">' + escapeHtml(r.action) + '</span></td>' +
+      '<td><span class="tag">' + escapeHtml(r.label) + '</span></td>' +
+      '<td style="color:var(--muted);">' + escapeHtml(r.ctx) + '</td>' +
+      '<td style="color:var(--muted);">' + escapeHtml(r.status) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ============================================================
+// POLICY CONFIG RENDER
+// ============================================================
+function renderRules() {
+  var grid = document.getElementById('rules-grid');
+  var html = '';
+
+  // Layer 1 patterns
+  PATTERN_RULES.forEach(function(rule) {
+    html += '<div class="rule-card">' +
+      '<div class="rule-card-name">' + escapeHtml(rule.label) + '</div>' +
+      '<span class="badge badge-' + levelClass(rule.level) + '">' + LEVEL_NAME[rule.level] + '</span>' +
+      '<div class="rule-card-regex">' + escapeHtml(rule.regex.source.slice(0,80)) + (rule.regex.source.length > 80 ? '…' : '') + '</div>' +
+      '<div class="rule-card-footer"><span>Layer 1 · Regex</span></div>' +
+    '</div>';
+  });
+
+  // Layer 2 keyword groups
+  KEYWORD_GROUPS.forEach(function(group) {
+    var preview = group.keywords.slice(0,4).join(', ') + (group.keywords.length > 4 ? ' +' + (group.keywords.length-4) + ' more' : '');
+    html += '<div class="rule-card">' +
+      '<div class="rule-card-name">' + escapeHtml(group.label) + '</div>' +
+      '<span class="badge badge-' + levelClass(group.level) + '">' + LEVEL_NAME[group.level] + '</span>' +
+      '<div class="rule-card-regex">' + escapeHtml(preview) + '</div>' +
+      '<div class="rule-card-footer"><span>Layer 2 · Keywords</span></div>' +
+    '</div>';
+  });
+
+  // Layer 4 custom rules
+  CUSTOM_RULES.forEach(function(rule, i) {
+    html += '<div class="rule-card">' +
+      '<div class="rule-card-name">' + escapeHtml(rule.name) + '</div>' +
+      '<span class="badge badge-' + levelClass(rule.level) + '">' + LEVEL_NAME[rule.level] + '</span>' +
+      '<div class="rule-card-regex">' + escapeHtml(rule.pattern) + '</div>' +
+      '<div class="rule-card-footer">' +
+        '<span>Layer 4 · Custom</span>' +
+        '<label class="toggle-wrap">' +
+          '<span style="font-size:11px;color:var(--muted);">' + (rule.enabled ? 'On' : 'Off') + '</span>' +
+          '<label class="toggle">' +
+            '<input type="checkbox" ' + (rule.enabled ? 'checked' : '') + ' data-custom-idx="' + i + '">' +
+            '<span class="toggle-slider"></span>' +
+          '</label>' +
+        '</label>' +
+      '</div>' +
+    '</div>';
+  });
+
+  grid.innerHTML = html;
+
+  // Attach toggle listeners
+  grid.querySelectorAll('input[data-custom-idx]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var idx = parseInt(this.dataset.customIdx);
+      CUSTOM_RULES[idx].enabled = this.checked;
+      this.closest('.toggle-wrap').querySelector('span').textContent = this.checked ? 'On' : 'Off';
+    });
+  });
+}
+
+// ============================================================
+// SCANNER
+// ============================================================
+function highlightMatches(text, findings) {
+  if (!findings.length) return escapeHtml(text);
+  // Build sorted list of [start, end, label] intervals
+  var intervals = [];
+  findings.forEach(function(f) {
+    var re = new RegExp(f.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      intervals.push([m.index, m.index + m[0].length, f.label]);
+    }
+  });
+  // Sort and merge
+  intervals.sort(function(a,b) { return a[0]-b[0] || b[1]-a[1]; });
+  var merged = [];
+  intervals.forEach(function(iv) {
+    if (merged.length && iv[0] < merged[merged.length-1][1]) {
+      merged[merged.length-1][1] = Math.max(merged[merged.length-1][1], iv[1]);
+    } else {
+      merged.push(iv.slice());
+    }
+  });
+  var result = '';
+  var pos = 0;
+  merged.forEach(function(iv) {
+    result += escapeHtml(text.slice(pos, iv[0]));
+    result += '<mark class="matched">' + escapeHtml(text.slice(iv[0], iv[1])) + '</mark>';
+    pos = iv[1];
+  });
+  result += escapeHtml(text.slice(pos));
+  return result;
+}
+
+document.getElementById('scan-btn').addEventListener('click', function() {
+  var text = document.getElementById('scan-text').value.trim();
+  var ctx  = document.getElementById('scan-context').value;
+  if (!text) return;
+
+  // Split into sentences
+  var chunks = text.match(/[^.!?\n]+[.!?\n]?/g) || [text];
+  chunks = chunks.map(function(c) { return c.trim(); }).filter(function(c) { return c.length > 0; });
+
+  var docResult = scanText(text);
+  var sanitised = redactText(text);
+  var action    = enforceAction(docResult.levelName, ctx);
+
+  appendAudit(action, docResult.levelName + ' · ' + (docResult.findings[0] ? docResult.findings[0].label : 'Document'), ctxLabel(ctx));
+
+  // Doc badge
+  var db = document.getElementById('doc-badge');
+  db.className = 'badge badge-' + levelClass(docResult.level);
+  db.textContent = docResult.levelName;
+
+  // Summary row
+  var counts = [0,0,0,0];
+  chunks.forEach(function(chunk) {
+    var r = scanText(chunk);
+    counts[r.level]++;
+  });
+  var sr = document.getElementById('summary-row');
+  sr.innerHTML = [
+    counts[3] ? '<span class="badge badge-restricted">'   + counts[3] + ' Restricted</span>'   : '',
+    counts[2] ? '<span class="badge badge-confidential">' + counts[2] + ' Confidential</span>' : '',
+    counts[1] ? '<span class="badge badge-internal">'     + counts[1] + ' Internal</span>'     : '',
+    counts[0] ? '<span class="badge badge-public">'       + counts[0] + ' Public</span>'       : ''
+  ].join('');
+
+  // Chunk cards
+  var cc = document.getElementById('chunk-cards');
+  cc.innerHTML = chunks.map(function(chunk, i) {
+    var r = scanText(chunk);
+    var act = enforceAction(r.levelName, ctx);
+    var tags = [];
+    r.findings.forEach(function(f) {
+      if (tags.indexOf(f.label) === -1) tags.push(f.label);
+    });
+    var reasonMap = {
+      ALLOW: 'No sensitive content detected — safe to proceed.',
+      WARN:  'Sensitive content detected — review before sending.',
+      REDACT:'LLM context: sensitive values will be redacted before forwarding.',
+      BLOCK: 'Restricted content — action blocked. Remove sensitive data before sharing.'
+    };
+    return '<div class="chunk-card">' +
+      '<div class="chunk-header">' +
+        '<span class="chunk-num">#' + (i+1) + '</span>' +
+        '<span class="badge badge-' + levelClass(r.level) + '">' + r.levelName + '</span>' +
+        '<span class="badge badge-' + actionClass(act) + '">' + act + '</span>' +
+        tags.map(function(t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join('') +
+      '</div>' +
+      '<div class="chunk-body">' + highlightMatches(chunk, r.findings) + '</div>' +
+      '<div class="chunk-footer">' + reasonMap[act] + '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('sanitised-out').textContent = sanitised;
+  document.getElementById('scan-results').classList.remove('hidden');
+});
+
+function ctxLabel(ctx) {
+  return { view:'View Only', llm:'LLM Input', share:'File Share', email:'Email' }[ctx] || ctx;
+}
+
+// ============================================================
+// LLM GUARD
+// ============================================================
+document.getElementById('llm-btn').addEventListener('click', function() {
+  var text = document.getElementById('llm-text').value.trim();
+  if (!text) return;
+
+  var result   = scanText(text);
+  var sanitised = redactText(text);
+  var action   = enforceAction(result.levelName, 'llm');
+
+  appendAudit(action, result.levelName + (result.findings[0] ? ' · ' + result.findings[0].label : ''), 'LLM Input');
+
+  // Banner
+  var banner = document.getElementById('llm-banner');
+  if (action === 'ALLOW') {
+    banner.className = 'llm-banner safe';
+    banner.textContent = '🟢 Safe to send — no sensitive content detected.';
+  } else if (action === 'BLOCK') {
+    banner.className = 'llm-banner blocked';
+    banner.textContent = '🔴 Blocked — restricted content found. Cannot forward to LLM.';
+  } else {
+    var redactCount = result.findings.length;
+    banner.className = 'llm-banner warn';
+    banner.textContent = '🟡 ' + redactCount + ' redaction' + (redactCount !== 1 ? 's' : '') + ' applied — sanitised version ready to send.';
+  }
+
+  document.getElementById('llm-original').textContent = text;
+  document.getElementById('llm-sanitised').textContent = action === 'BLOCK' ? '[BLOCKED — not forwarded]' : sanitised;
+
+  // Redactions list
+  var rl = document.getElementById('llm-redactions');
+  if (!result.findings.length) {
+    rl.innerHTML = '<span style="color:var(--muted);font-size:12px;">No redactions needed.</span>';
+  } else {
+    var seen = {};
+    var items = [];
+    result.findings.forEach(function(f) {
+      var key = f.value + '|' + f.label;
+      if (!seen[key]) {
+        seen[key] = true;
+        items.push(f);
+      }
+    });
+    rl.innerHTML = items.map(function(f) {
+      return '<div class="redaction-item">' +
+        '<span class="redaction-original">' + escapeHtml(f.value) + '</span>' +
+        '<span class="redaction-arrow">→</span>' +
+        '<span class="redaction-placeholder">[REDACTED_' + f.label.toUpperCase().replace(/\s/g,'_') + ']</span>' +
+        '<span class="redaction-reason">' + escapeHtml(f.label) + ' · ' + escapeHtml(f.layer) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('llm-results').classList.remove('hidden');
+});
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ============================================================
+// AUDIT LOG INTERACTIONS
+// ============================================================
+document.getElementById('filter-pills').addEventListener('click', function(e) {
+  var pill = e.target.closest('.filter-pill');
+  if (!pill) return;
+  document.querySelectorAll('.filter-pill').forEach(function(p) { p.classList.remove('active'); });
+  pill.classList.add('active');
+  renderAudit();
+});
+
+document.getElementById('clear-log-btn').addEventListener('click', function() {
+  auditLog.length = 0;
+  renderAudit();
+});
+
+// ============================================================
+// ADD CUSTOM RULE
+// ============================================================
+document.getElementById('add-rule-btn').addEventListener('click', function() {
+  var name    = document.getElementById('rule-name').value.trim();
+  var pattern = document.getElementById('rule-pattern').value.trim();
+  var level   = parseInt(document.getElementById('rule-level').value);
+  var msgEl   = document.getElementById('rule-msg');
+
+  if (!name || !pattern) {
+    msgEl.className = 'form-msg error';
+    msgEl.textContent = 'Name and pattern are required.';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+  try { new RegExp(pattern); } catch(e) {
+    msgEl.className = 'form-msg error';
+    msgEl.textContent = 'Invalid regex pattern: ' + e.message;
+    msgEl.classList.remove('hidden');
+    return;
+  }
+  CUSTOM_RULES.push({ name: name, pattern: pattern, level: level, enabled: true });
+  renderRules();
+  document.getElementById('rule-name').value = '';
+  document.getElementById('rule-pattern').value = '';
+  msgEl.className = 'form-msg success';
+  msgEl.textContent = '✓ Rule "' + name + '" added successfully.';
+  msgEl.classList.remove('hidden');
+  setTimeout(function() { msgEl.classList.add('hidden'); }, 3000);
+});
+
+// ============================================================
+// INIT
+// ============================================================
+renderAudit();
+renderRules();
+</script>
+</body>
+</html>

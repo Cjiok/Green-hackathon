@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body>
+<canvas id="c16"  width="16"  height="16"></canvas>
+<canvas id="c48"  width="48"  height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+function drawIcon(canvasId, size) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const s = size;
+
+  // Background circle
+  ctx.fillStyle = '#1f2328';
+  ctx.beginPath();
+  ctx.arc(s/2, s/2, s/2, 0, Math.PI*2);
+  ctx.fill();
+
+  // Shield path scaled to size
+  const scale = s / 24;
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#3b82d4';
+  const path = new Path2D('M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6L12 2zm0 4.5l5 2.25V12c0 3.5-2.3 6.75-5 7.85C9.3 18.75 7 15.5 7 12V8.75L12 6.5z');
+  ctx.fill(path);
+  ctx.restore();
+
+  return canvas.toDataURL('image/png');
+}
+
+const sizes = [
+  { id: 'c16',  size: 16,  name: 'icon16.png'  },
+  { id: 'c48',  size: 48,  name: 'icon48.png'  },
+  { id: 'c128', size: 128, name: 'icon128.png' },
+];
+
+const results = {};
+for (const {id, size, name} of sizes) {
+  results[name] = drawIcon(id, size);
+}
+document.title = 'DONE:' + JSON.stringify(results);
+</script>
+</body>
+</html>
