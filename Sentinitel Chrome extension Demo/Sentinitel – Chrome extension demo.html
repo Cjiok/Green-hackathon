@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sentinitel – Chrome extension demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9edf2;--card:#fff;--ink:#12263a;--mut:#5b6b7c;--line:#d5dde6;--acc:#0e7c86;--accfg:#fff;--hi:#f9c4c4;--hit:#a61b1b;--me:#fde6a2;--met:#7a4a06;--lo:#cfe2f7;--lot:#1d4a85;--ok:#157a3d;--pill:#12263a;--pillfg:#fff;--gen:#0e7c86;--chrome:#dfe3e8;--page:#fff;--side:#f6f7f9;--comp:#f4f4f5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b121a;--card:#15222f;--ink:#e6edf4;--mut:#93a4b5;--line:#2a3b4c;--acc:#37c2cd;--accfg:#06232a;--hi:#6a2327;--hit:#ffb4b4;--me:#5d4710;--met:#ffd978;--lo:#1f3b63;--lot:#a9ccf7;--ok:#5fd68a;--pill:#e6edf4;--pillfg:#0d1620;--gen:#37c2cd;--chrome:#2b3138;--page:#212327;--side:#1a1c1f;--comp:#2f3237}}
+:root[data-theme="dark"]{--bg:#0b121a;--card:#15222f;--ink:#e6edf4;--mut:#93a4b5;--line:#2a3b4c;--acc:#37c2cd;--accfg:#06232a;--hi:#6a2327;--hit:#ffb4b4;--me:#5d4710;--met:#ffd978;--lo:#1f3b63;--lot:#a9ccf7;--ok:#5fd68a;--pill:#e6edf4;--pillfg:#0d1620;--gen:#37c2cd;--chrome:#2b3138;--page:#212327;--side:#1a1c1f;--comp:#2f3237}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:17px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:16px}
+.note{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:12px;color:var(--mut);font-size:16px}
+button{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px}
+button:hover{border-color:var(--acc)}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.p{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:500}
+button.d{border-color:var(--hit);color:var(--hit)}
+.win{border:1px solid var(--line);border-radius:12px;background:var(--chrome);box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.tabs{display:flex;align-items:flex-end;gap:6px;padding:8px 10px 0}
+.dots{display:flex;gap:6px;margin:0 8px 12px 0}.dots i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+.tab{background:var(--page);border-radius:8px 8px 0 0;padding:7px 16px;font-size:15px;min-width:150px}
+.tb{position:relative;display:flex;align-items:center;gap:8px;background:var(--page);padding:6px 10px;border-bottom:1px solid var(--line)}
+.nav{color:var(--mut);letter-spacing:6px;font-size:18px}
+.url{flex:1;background:var(--chrome);border-radius:16px;padding:5px 14px;font-size:15px;color:var(--mut);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xb{position:relative;width:40px;height:40px;padding:0;border-radius:8px;display:grid;place-items:center;background:transparent;border-color:transparent}
+.xb svg{width:26px;height:26px}
+.badge{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;border-radius:10px;background:var(--hit);color:#fff;font-size:12px;font-weight:700;display:none;place-items:center;padding:0 4px}
+.badge.on{display:grid}.badge.ok{background:var(--ok)}
+.page{display:grid;grid-template-columns:210px 1fr;height:740px;background:var(--page);border-radius:0 0 12px 12px;overflow:hidden}
+@media(max-width:700px){.page{grid-template-columns:1fr}.side{display:none}}
+.side{background:var(--side);padding:14px;font-size:15.5px;color:var(--mut);border-right:1px solid var(--line)}
+.side b{display:block;color:var(--ink);margin-bottom:8px}.side div{padding:5px 6px;border-radius:6px}.side div:nth-child(2){background:var(--comp);color:var(--ink)}
+.main{display:flex;flex-direction:column;min-width:0}
+.thread{flex:1;overflow:auto;padding:18px 16px;display:flex;flex-direction:column;gap:12px}
+.hello{margin:auto;font-size:34px;font-weight:500;text-align:center}
+.msg{align-self:flex-end;max-width:85%;background:var(--comp);border-radius:16px;padding:9px 14px;white-space:pre-wrap;word-wrap:break-word;font-size:17.5px}
+.msg small{display:block;margin-top:6px;color:var(--mut);font-size:14px}
+.compw{padding:0 16px 16px}
+.comp{background:var(--comp);border-radius:24px;padding:10px 12px 10px 16px;display:flex;gap:10px;align-items:flex-end;border:2px solid transparent}
+.comp.held{border-color:var(--hit)}
+.ed{position:relative;flex:1;height:210px}
+.bk,#ta{position:absolute;inset:0;margin:0;padding:2px 0;font:19px/1.5 "Public Sans",system-ui,sans-serif;white-space:pre-wrap;word-wrap:break-word;overflow:auto;border:0}
+.bk{color:transparent;pointer-events:none}
+#ta{background:transparent;color:var(--ink);resize:none;outline:none}
+mark{color:transparent;border-radius:3px}.s-high{background:var(--hi)}.s-med{background:var(--me)}.s-low{background:var(--lo)}
+.send{width:44px;height:44px;font-size:20px;border-radius:50%;padding:0;background:var(--ink);color:var(--page);border-color:var(--ink);font-size:16px}
+.ext{display:none;position:absolute;z-index:20;top:calc(100% + 6px);right:6px;width:min(480px,calc(100vw - 32px));max-height:620px;overflow:auto;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.28);padding:14px}
+.ext.open{display:block;animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.ext.open{animation:none}}
+.eh{display:flex;align-items:center;gap:8px;margin-bottom:8px}.eh b{font-size:21px;flex:1}
+.risk{font-size:14.5px;font-weight:700;border-radius:10px;padding:2px 9px}
+.x{border:0;padding:2px 8px;background:transparent;font-size:18px;color:var(--mut)}
+.ttl{font-weight:500;font-size:18px;margin:4px 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}.chip{font-size:15px;border-radius:6px;padding:2px 8px;font-weight:500}
+.lab{font-size:15px;color:var(--mut);margin:10px 0 4px}
+.anon{white-space:pre-wrap;word-wrap:break-word;font-size:16.5px;line-height:1.55;background:var(--bg);border-radius:8px;padding:10px;max-height:190px;overflow:auto}
+.ph{background:var(--pill);color:var(--pillfg);border-radius:4px;padding:0 5px;font-size:15px}
+.gen{background:var(--gen);color:var(--accfg);border-radius:4px;padding:0 5px;font-size:15px}
+.q{margin:0;padding-left:20px;font-size:16.5px}.q li{margin:3px 0}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.foot{margin-top:10px;font-size:14.5px;color:var(--mut)}
+.toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--page);padding:8px 14px;border-radius:8px;font-size:16px;display:none;max-width:90%}
+.toast.on{display:block}
+.pagew{position:relative}
+.note input{font:inherit;font-size:15.5px;padding:5px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink);width:min(300px,100%)}
+.inc{font-size:15px;color:var(--mut);margin:-2px 0 10px}
+.wl{font-size:22px;margin:26px 0 0}
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tile h3{margin:0 0 4px;font-size:18px}.tile p{margin:0;color:var(--mut);font-size:16px}
+.tile b{display:block;margin-top:6px;font-size:16px;color:var(--hit);min-height:24px}
+.tile.hit{border-color:var(--hit)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="note"><span>Paste your own prompt into the chat box, or</span><button class="p" id="sample" type="button">Insert the sample prompt</button><label for="cust">Your company patterns (keywords or /regex/):</label><input type="text" id="cust" value="Project Falcon, /PRJ-\d{3}/"><span id="speed"></span></div>
+  <div class="win">
+    <div class="tabs"><div class="dots" aria-hidden="true"><i></i><i></i><i></i></div><div class="tab">ChatGPT</div></div>
+    <div class="tb">
+      <span class="nav" aria-hidden="true">‹ › ↻</span>
+      <div class="url">chatgpt.com</div>
+      <button class="xb" id="xbtn" type="button" aria-label="Open Sentinitel" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--acc)" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.500-7-10V6l7-3z" fill="var(--acc)" fill-opacity=".15"/><path d="M9 12l2 2 4-4" stroke-linecap="round"/></svg>
+        <span class="badge" id="badge"></span>
+      </button>
+      <div class="ext" id="ext" role="dialog" aria-label="Sentinitel"></div>
+    </div>
+    <div class="page pagew">
+      <div class="side"><b>Chats</b><div>New chat</div><div>Q3 pricing ideas</div><div>Onboarding email</div></div>
+      <div class="main">
+        <div class="thread" id="thread"><div class="hello" id="hello">What are you working on?</div></div>
+        <div class="compw">
+          <div class="comp" id="comp">
+            <div class="ed"><div class="bk" id="bk" aria-hidden="true"></div>
+              <textarea id="ta" spellcheck="false" aria-label="Message ChatGPT" placeholder="Ask anything"></textarea></div>
+            <button class="send" id="send" type="button" aria-label="Send message">↑</button>
+          </div>
+        </div>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+  <h2 class="wl">What Sentinitel watches for</h2>
+  <div class="cats" id="cats"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const num=s=>{const x=s.match(/(\d[\d,.]*)\s?([km])?/i);let v=parseFloat(x[1].replace(/,/g,''));if(x[2])v*=x[2].toLowerCase()==='m'?1e6:1e3;return v;};
+const rules=[
+ {id:'iban',label:'IBAN',sev:'high',re:/\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}\s?[A-Z0-9]{1,4}\b/g,ph:'IBAN'},
+ {id:'key',label:'API key',sev:'high',re:/\b(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,})\b/g,ph:'SECRET'},
+ {id:'pwd',label:'Password',sev:'high',re:/(?:password|passwd|pwd)\s*[:=]\s*\S+/gi,ph:'PASSWORD'},
+ {id:'card',label:'Card number',sev:'high',re:/\b(?:\d[ -]?){13,16}\b/g,ph:'CARD'},
+ {id:'co',label:'Customer company',sev:'med',re:/\b[A-Z][\w&-]+(?:\s[A-Z][\w&-]+){0,3}\s(?:GmbH|AG|Ltd|Inc|LLC|SAS|BV|KG|OG)\b/g,ph:'COMPANY'},
+ {id:'email',label:'Email address',sev:'med',re:/[\w.+-]+@[\w-]+\.[\w.-]+/g,ph:'EMAIL'},
+ {id:'phone',label:'Phone number',sev:'med',re:/\+\d[\d\s()-]{7,14}\d/g,ph:'PHONE'},
+ {id:'name',label:'Contact name',sev:'med',re:/\b(?:Mr|Ms|Mrs|Dr|Herr|Frau)\.?\s+[A-Z][a-z]+(?:\s[A-Z][a-z]+)?/g,ph:'PERSON'},
+ {id:'arr',label:'Revenue figure (ARR)',sev:'med',re:/(?:€|\$|£)?\s?\d[\d,.]*\s?[km]?\s?(?:ARR|MRR)\b/gi,gen:m=>{const v=num(m);return v<1e5?'a five-figure ARR':v<1e6?'a mid six-figure ARR':'a seven-figure ARR';}},
+ {id:'churn',label:'Churn rate',sev:'med',re:/\b\d+(?:\.\d+)?\s?%\s?(?:monthly\s|annual\s)?churn(?:\srate)?/gi,gen:m=>{const v=parseFloat(m);return(v<=3?'low single-digit':v<=7?'mid single-digit':v<10?'high single-digit':'double-digit')+' churn';}},
+ {id:'staff',label:'Headcount',sev:'low',re:/\b\d{1,5}\s+(?:employees|staff|people|FTEs?)\b/gi,gen:m=>{const v=parseInt(m);return v<10?'a micro team':v<50?'a small team (10–50 staff)':v<250?'a mid-size team':'a large team';}},
+ {id:'ip',label:'IP address',sev:'med',re:/\b(?:\d{1,3}\.){3}\d{1,3}\b/g,ph:'IP'},
+ {id:'fin',label:'Financial amount',sev:'low',re:/(?:€|\$|£)\s?\d[\d,.]*\s?(?:k|m|bn)?|\b\d[\d,.]*\s?(?:EUR|USD)\b/gi,ph:'AMOUNT'},
+ {id:'conf',label:'Confidential marker',sev:'low',re:/\b(?:confidential|internal only|do not share|strictly private)\b/gi,ph:null}
+];
+const W={high:30,med:15,low:5};
+const CATS=[['Personal Data','Names, emails, phone numbers, addresses'],['Credentials','API keys, passwords, tokens, private keys'],['Financial Data','Revenue figures, cap tables, bank details'],['Customer Data','Client names, contracts, usage data'],['Internal Operational Data','Customer volume, retention figures, strategy, fundraising plans'],['IP / Source Code','Proprietary algorithms, unreleased features'],['Legal Docs','NDAs, term sheets, litigation documents'],['Custom Patterns','Company-defined keywords or regex, e.g. project codenames']];
+const CAT={iban:'Financial Data',key:'Credentials',pwd:'Credentials',card:'Financial Data',co:'Customer Data',email:'Personal Data',phone:'Personal Data',name:'Personal Data',arr:'Financial Data',churn:'Customer Data',staff:'Customer Data',ip:'Personal Data',fin:'Financial Data',conf:'Legal Docs'};
+rules.forEach(r=>r.cat=CAT[r.id]);
+rules.push(
+ {id:'addr',label:'Address',sev:'med',cat:'Personal Data',re:/\b\d{1,4}[a-z]?\s+[A-Z][\w.-]+(?:\s[A-Z][\w.-]+)*\s(?:Street|St|Road|Rd|Avenue|Ave|Lane|Drive|Platz)\b|\b[A-Z][a-zäöüß]+(?:strasse|straße|gasse)\s\d+[a-z]?\b/g,ph:'ADDRESS'},
+ {id:'tok',label:'Access token',sev:'high',cat:'Credentials',re:/\b(?:Bearer\s+[A-Za-z0-9._-]{16,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}|xox[bp]-[A-Za-z0-9-]{10,})/g,ph:'TOKEN'},
+ {id:'pk',label:'Private key',sev:'high',cat:'Credentials',re:/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,ph:'PRIVATE_KEY'},
+ {id:'cap',label:'Cap table / equity',sev:'high',cat:'Financial Data',re:/\b(?:cap table|fully diluted|vesting schedule|option pool|\d+(?:\.\d+)?\s?%\s+(?:equity|stake|of the (?:shares|company)))\b/gi,ph:'EQUITY'},
+ {id:'acct',label:'Bank account number',sev:'high',cat:'Financial Data',re:/\b(?:account|acct)\.?\s*(?:no\.?|number|#)?\s*[:#]?\s*\d{6,}\b/gi,ph:'ACCOUNT'},
+ {id:'rev',label:'Revenue / valuation',sev:'med',cat:'Financial Data',re:/\b(?:revenue|turnover|EBITDA|valuation|burn rate)\s+(?:of|is|was|at|:)?\s*(?:€|\$|£)\s?\d[\d,.]*\s?(?:k|m|bn)?/gi,ph:'AMOUNT'},
+ {id:'ctr',label:'Contract reference',sev:'med',cat:'Customer Data',re:/\b(?:contract|agreement|subscription)\s+(?:no\.?|#|number|ref\.?)\s*[:#]?\s*[\w-]+/gi,ph:'CONTRACT'},
+ {id:'use',label:'Usage data',sev:'med',cat:'Customer Data',re:/\b\d[\d,.]*\s?[km]?\s+(?:DAU|MAU|logins|API calls|sessions|active users)\b/gi,gen:()=>'a usage figure'},
+ {id:'code',label:'Source code',sev:'high',cat:'IP / Source Code',re:/```[\s\S]*?```|\b(?:def|function|class)\s+\w+\s*\([^)]*\)\s*[:{]/g,ph:'CODE'},
+ {id:'ipx',label:'Unreleased / proprietary IP',sev:'med',cat:'IP / Source Code',re:/\b(?:unreleased|unannounced|pre-release|proprietary (?:algorithm|model|code|formula)|trade secret|internal roadmap|not yet launched)\b/gi,ph:null},
+ {id:'legal',label:'Legal document',sev:'med',cat:'Legal Docs',re:/\b(?:NDA|non-disclosure agreement|term sheet|SAFE note|shareholder agreement|settlement agreement|litigation|lawsuit|attorney-client|privileged)\b/gi,ph:null},
+ {id:'acv',label:'Average contract value',sev:'med',cat:'Financial Data',re:/\baverage contract value\s*(?:of\s*)?(?:€|\$|£)\s?\d[\d,.]*\s?[km]?/gi,gen:m=>{const v=num(m.replace(/average contract value/i,''));return(v<1e4?'a four-figure':v<1e5?'a five-figure':'a six-figure')+' average contract value';}},
+ {id:'seed',label:'Fundraising plan',sev:'high',cat:'Internal Operational Data',re:/\b(?:our\s+)?(?:upcoming\s+)?(?:€|\$|£)\s?\d[\d,.]*\s?[km]?\s+(?:pre-)?(?:Seed|Series\s[A-C])(?:\s+extension)?(?:\s+(?:raise|round))?/gi,gen:()=>'a funding round'},
+ {id:'custcount',label:'Customer volume',sev:'med',cat:'Internal Operational Data',re:/\b\d+\s+(?:paying\s+)?(?:corporate\s+)?(?:customers|clients)\b/gi,gen:m=>{const v=parseInt(m);return v<10?'a handful of customers':v<100?'a few dozen customers':'hundreds of customers';}},
+ {id:'retention',label:'Retention figure',sev:'high',cat:'Internal Operational Data',re:/\b\d+(?:\.\d+)?\s?%\s+of\s+(?:our\s+)?(?:existing\s+)?(?:\d+\s+)?(?:customer\s+)?(?:accounts|customers|clients)\b/gi,gen:()=>'most of our existing customers'},
+ {id:'renew',label:'Renewal commitments',sev:'med',cat:'Internal Operational Data',re:/\bhave\s+(?:verbally\s+)?confirmed\s+[\w-]+\s+(?:subscription\s+)?renewals?\b/gi,gen:()=>'have indicated they plan to renew'},
+ {id:'q4',label:'Q4 strategy',sev:'high',cat:'Internal Operational Data',re:/(?:primary\s+)?\bQ[1-4]\s+strategic\s+goal\s+is\s+[^.]+/gi,gen:()=>'main strategic goal is entering a new market segment'},
+ {id:'gtm',label:'Acquisition strategy',sev:'med',cat:'Internal Operational Data',re:/customer acquisition strategy to [\w\s-]+?(?=,|\.|$)/gi,gen:()=>'customer acquisition strategy'},
+ {id:'inv',label:'Investor name',sev:'high',cat:'Personal Data',re:/(?<=\b(?:investor target|lead investor|investor|CEO|founder|partner|contact|attn\.?)[,:]?\s)[A-Z][a-z]+\s[A-Z][a-z]+/g,ph:'INVESTOR'}
+);
+function allRules(){const c=[];($('cust').value||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>{try{const m=x.match(/^\/(.+)\/([a-z]*)$/);const re=m?new RegExp(m[1],m[2].includes('g')?m[2]:m[2]+'g'):new RegExp('\\b'+x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','gi');c.push({id:'cust',label:'Custom pattern',sev:'med',cat:'Custom Patterns',re,ph:'CUSTOM'});}catch(e){}});return rules.concat(c);}
+$('cats').innerHTML=CATS.map(([c,d],i)=>'<div class="tile" id="tile'+i+'"><h3>'+c+'</h3><p>'+d+'</p><b></b></div>').join('');
+$('cust').addEventListener('input',()=>render());
+const SAMPLE="I want an aggressive 10-slide sales pitch deck for our potential investor, plug and play.\n\nMention that we have $500,000 ARR with 40 paying corporate customers. Our primary Q4 strategic goal is expanding into early-stage SaaS startups. Address this deck directly to our lead investor target, Nickie Muller.\n\nInclude a dedicated retention slide emphasizing that 100% of our existing 40 customer accounts (average contract value $12.5k) have verbally confirmed 1-year subscription renewals. Highlight our customer acquisition strategy to replace legacy call centers, and structure the narrative around our upcoming $2M Seed extension raise.";
+const QS={
+ co:"Does the AI need the company name? Describing the industry, like “a mid-size logistics firm”, is usually enough.",
+ person:"Is the contact’s name needed, or is “the CEO” enough for the pitch?",
+ kpi:"Do you need exact numbers? Bands like “mid six-figure ARR” keep the advice just as useful.",
+ secret:"Credentials never belong in a prompt. Describe the setup or the error instead.",
+ bank:"Do you need the real number, or only its format?",
+ ops:"Do you need exact customer counts and retention rates? Ranges like “a few dozen customers” and “most renewed” give the AI enough to write the same deck.",
+ strat:"Can the Q4 plan and the raise be described by type (new market segment, funding round) instead of the specifics?",
+ inv:"Does the AI need the investor’s name? Use a placeholder and add the name in your own slide template.",
+ legal:"Do you need to share the legal text itself, or can you summarise the clause you need help with?",
+ ip:"Can you describe the logic or feature in general terms instead of pasting code or roadmap details?",
+ cust:"Is the codename needed? A generic label such as “the project” works just as well.",
+ goal:"What outcome do you want: a full deck outline, slide copy, or speaker notes?"
+};
+let found=[],itAlerts=0;
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const ta=$('ta');
+function scan(t){
+  const t0=performance.now(),all=[];
+  allRules().forEach((r,p)=>{r.re.lastIndex=0;let m;while((m=r.re.exec(t))){
+    if(!m[0].length){r.re.lastIndex++;continue;}
+    if(r.id==='card'&&m[0].replace(/\D/g,'').length<13)continue;
+    all.push({s:m.index,e:m.index+m[0].length,r,p,txt:m[0]});}});
+  all.sort((a,b)=>a.s-b.s||(b.e-a.e)||a.p-b.p);
+  const out=[];let end=-1;
+  for(const m of all){if(m.s>=end){out.push(m);end=m.e;}}
+  return{out,ms:performance.now()-t0};
+}
+function anonymise(t,list){
+  let html='',txt='',last=0;const idx={},n={};
+  const add=(a,b)=>{html+=esc(a);txt+=a;};
+  for(const m of list){
+    if(!m.r.ph&&!m.r.gen){add(t.slice(last,m.e));last=m.e;continue;}
+    add(t.slice(last,m.s));
+    if(m.r.gen){const g=m.r.gen(m.txt);html+='<span class="gen">'+esc(g)+'</span>';txt+=g;}
+    else{const k=m.r.ph+m.txt;if(!idx[k]){n[m.r.ph]=(n[m.r.ph]||0)+1;idx[k]=n[m.r.ph];}
+      const p='['+m.r.ph+'_'+idx[k]+']';html+='<span class="ph">'+p+'</span>';txt+=p;}
+    last=m.e;
+  }
+  add(t.slice(last));
+  return{html,txt};
+}
+const lvl=sc=>sc===0?['Clean','ok']:sc<30?['Low risk','lot']:sc<60?['Medium risk','met']:['High risk','hit'];
+let open=false;
+function setOpen(v){open=v;$('ext').classList.toggle('open',v);$('xbtn').setAttribute('aria-expanded',v);}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),3200);}
+function render(){
+  const t=ta.value,{out,ms}=scan(t);found=out;
+  $('speed').textContent=t.trim()?'Scanned in '+ms.toFixed(1)+' ms':'';
+  CATS.forEach(([c],i)=>{const n=out.filter(m=>m.r.cat===c).length,el=$('tile'+i);el.classList.toggle('hit',n>0);el.querySelector('b').textContent=n?n+(n===1?' item found':' items found'):'';});
+  let h='',last=0;
+  out.forEach(m=>{h+=esc(t.slice(last,m.s))+'<mark class="s-'+m.r.sev+'">'+esc(m.txt)+'</mark>';last=m.e;});
+  $('bk').innerHTML=h+esc(t.slice(last))+'\n';
+  const sc=Math.min(100,out.reduce((a,m)=>a+W[m.r.sev],0)),[lv,c]=lvl(sc);
+  const b=$('badge');b.className='badge'+(t.trim()?' on':'')+(out.length?'':' ok');b.textContent=out.length?out.length:'✓';
+  $('comp').classList.remove('held');
+  let ui='<div class="eh"><b>Sentinitel</b><span class="risk" style="background:var(--'+(c==='ok'?'lo':sc<30?'lo':sc<60?'me':'hi')+');color:var(--'+c+')">'+lv+'</span><button class="x" id="cl" type="button" aria-label="Close">×</button></div>';
+  if(!t.trim())ui+='<div class="ttl">Waiting for a prompt</div><div class="mut" style="color:var(--mut);font-size:17px">Paste or type in the chat box. Sentinitel checks it before anything is sent.</div>';
+  else if(!out.length)ui+='<div class="ttl" style="color:var(--ok)">No sensitive data found. Safe to send.</div>';
+  else{
+    const cnt={},rk={low:1,med:2,high:3};out.forEach(m=>{const k=m.r.cat;cnt[k]=cnt[k]||{n:0,s:m.r.sev,l:new Set()};cnt[k].n++;if(rk[m.r.sev]>rk[cnt[k].s])cnt[k].s=m.r.sev;cnt[k].l.add(m.r.label);});
+    const a=anonymise(t,out);
+    const ids=new Set(out.map(m=>m.r.id)),qs=[];
+    if(ids.has('co'))qs.push(QS.co);if(ids.has('name')||ids.has('email'))qs.push(QS.person);
+    if(ids.has('arr')||ids.has('churn')||ids.has('staff'))qs.push(QS.kpi);
+    if(ids.has('key')||ids.has('pwd'))qs.push(QS.secret);if(ids.has('iban')||ids.has('card'))qs.push(QS.bank);
+    if(ids.has('custcount')||ids.has('retention')||ids.has('renew'))qs.push(QS.ops);if(ids.has('q4')||ids.has('seed')||ids.has('gtm'))qs.push(QS.strat);if(ids.has('inv'))qs.push(QS.inv);if(ids.has('legal')||ids.has('conf'))qs.push(QS.legal);if(ids.has('code')||ids.has('ipx'))qs.push(QS.ip);if(ids.has('cust'))qs.push(QS.cust);qs.push(QS.goal);
+    ui+='<div class="ttl">Hold on: '+out.length+(out.length===1?' item':' items')+' in this prompt could expose your company, your customers or your investor.</div><div class="chips">'+
+      Object.entries(cnt).map(([k,v])=>'<span class="chip s-'+v.s+'" style="color:var(--'+(v.s==='high'?'hit':v.s==='med'?'met':'lot')+')">'+k+' ×'+v.n+'</span>').join('')+'</div><div class="inc">Found: '+Object.values(cnt).flatMap(v=>[...v.l]).join(', ')+'</div>'+
+      '<div class="lab">Safe version: names become placeholders, numbers become ranges</div><div class="anon">'+a.html+'</div>'+
+      '<div class="lab">Questions to keep the advice useful</div><ul class="q">'+qs.slice(0,5).map(q=>'<li>'+q+'</li>').join('')+'</ul>'+
+      '<div class="btns"><button class="p" id="use" type="button">Use safe version</button><button class="d" id="force" type="button">Send anyway'+(sc>=30?' and warn IT':'')+'</button></div>'+
+      '<div class="foot">Your original text stays in your browser. IT alerts this session: '+itAlerts+'</div>';
+    render.anon=a.txt;
+  }
+  $('ext').innerHTML=ui;
+  $('cl').onclick=()=>setOpen(false);
+  if($('use'))$('use').onclick=()=>{ta.value=render.anon;render();setOpen(false);toast('Prompt replaced with the safe version. Ready to send.');};
+  if($('force'))$('force').onclick=()=>{const hi=sc>=30;if(hi){itAlerts++;}doSend(t,hi?'Sent unprotected. IT has been warned (data types only, no values).':'Sent unprotected.');};
+}
+function doSend(text,note){
+  $('hello').style.display='none';
+  const d=document.createElement('div');d.className='msg';d.textContent=text;
+  const s=document.createElement('small');s.textContent=note||'Sent to ChatGPT (demo: no request is made).';d.appendChild(s);
+  $('thread').appendChild(d);$('thread').scrollTop=1e5;
+  ta.value='';render();setOpen(false);if(note)toast(note);
+}
+$('send').onclick=()=>{
+  if(!ta.value.trim())return;
+  if(found.length){setOpen(true);$('comp').classList.add('held');toast('Sentinitel held your message.');return;}
+  doSend(ta.value,'Sent to ChatGPT. Sentinitel found nothing sensitive.');
+};
+$('xbtn').onclick=()=>setOpen(!open);
+ta.addEventListener('input',render);
+ta.addEventListener('paste',()=>setTimeout(()=>{render();setOpen(true);},0));
+ta.addEventListener('scroll',()=>{$('bk').scrollTop=ta.scrollTop;});
+$('sample').onclick=()=>{ta.value=SAMPLE;render();setOpen(true);};
+render();
+</script>
+</body>
+</html>
